@@ -10,6 +10,7 @@
                 <a href="/dashboard/content#courses">2. الكورسات</a>
                 <a href="/dashboard/content#course-content">3. الدروس</a>
                 <a href="/dashboard/content#ai-generator">4. الذكاء الاصطناعي</a>
+                <AuthorizeView Roles="SuperAdmin"><Authorized><a href="/dashboard/users">5. المستخدمون</a></Authorized></AuthorizeView>
             </nav>
         }
         <RouteView RouteData="@routeData" />
