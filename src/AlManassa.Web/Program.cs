@@ -10,6 +10,7 @@ builder.Services.AddScoped<CourseStore>();
 builder.Services.AddHttpClient("ai", c=>{c.BaseAddress=new Uri("https://api.openai.com/");c.Timeout=TimeSpan.FromSeconds(90);});
 var app = builder.Build();
 app.MapGet("/health", () => Results.Ok(new {status="ok",application="Al-Manassa Web"}));
+app.MapGet("/health/database", async (CourseStore store, CancellationToken ct) => { try { var counts = await store.CountsAsync(ct); return Results.Ok(new {status="connected",courseCount=counts.Total}); } catch { return Results.Json(new {status="unavailable"},statusCode:503); } });
 app.MapPost("/api/admin/ai/curriculum", async (HttpContext ctx, CurriculumInput input, CourseStore store, IHttpClientFactory clients, IConfiguration config, CancellationToken ct) => {
     // Temporary server-side API key gate. Replace with ASP.NET Identity roles before exposing admin UI.
     var expected=config["AI_ADMIN_TOKEN"];
