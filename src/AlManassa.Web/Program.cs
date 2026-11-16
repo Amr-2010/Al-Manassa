@@ -15,6 +15,7 @@ builder.Services.AddScoped<CourseStore>();
 builder.Services.AddScoped<AuthStore>();
 builder.Services.AddScoped<LearningStore>();
 builder.Services.AddScoped<ContentEditor>();
+builder.Services.AddScoped<CurriculumAiService>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options => { options.LoginPath="/login"; options.Cookie.Name="AlManassa.Auth"; options.Cookie.HttpOnly=true; options.Cookie.SecurePolicy=CookieSecurePolicy.Always; options.Cookie.SameSite=SameSiteMode.Lax; options.ExpireTimeSpan=TimeSpan.FromDays(30); options.SlidingExpiration=true; options.Events.OnRedirectToLogin=context=>{context.Response.Redirect("/login?returnUrl="+Uri.EscapeDataString(context.Request.Path+context.Request.QueryString));return Task.CompletedTask;}; });
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
