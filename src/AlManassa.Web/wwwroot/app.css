@@ -225,3 +225,9 @@ body{background:#f7f9fc}
 .content-admin .course-editor-form :is(input,select,textarea):focus{outline:2px solid #d9a12c;outline-offset:1px;border-color:#d9a12c}
 @media(min-width:1100px){.content-admin .course-editor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){.content-admin .course-editor-grid{grid-template-columns:1fr;gap:15px}.content-admin .course-editor-footer{align-items:stretch;flex-direction:column}.content-admin .course-editor-actions{width:100%}.content-admin .course-editor-actions button{flex:1}}
+
+/* Shared dashboard navigation: visible on every /dashboard route */
+.global-admin-nav{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:14px clamp(16px,4vw,52px);background:#f4f7fc;border-bottom:1px solid #dbe4f1;direction:rtl}
+.global-admin-nav a{display:inline-flex;align-items:center;justify-content:center;min-height:37px;padding:8px 14px;border:1px solid #cbdaf0;border-radius:9px;background:#fff;color:#16365d;text-decoration:none;font-weight:650;font-size:14px;white-space:nowrap}
+.global-admin-nav a:hover,.global-admin-nav a:focus-visible{background:#e6efff;border-color:#7ca8e9;outline-offset:2px}
+@media(max-width:600px){.global-admin-nav{padding:10px 12px;gap:6px}.global-admin-nav a{flex:1 1 auto;font-size:12px;padding:8px}}
