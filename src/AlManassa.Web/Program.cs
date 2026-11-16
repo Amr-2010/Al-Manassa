@@ -86,7 +86,7 @@ app.MapPost("/login", async (HttpContext ctx, IAntiforgery af, AuthStore users) 
     if(email.Length>320||password.Length>1024) return Results.BadRequest();
     var account=await users.ValidateAsync(email,password);
     if(account is null) return Results.Content("بيانات الدخول غير صحيحة. <a href='/login'>حاول مرة أخرى</a>","text/html; charset=utf-8",statusCode:401);
-    var claims=new[]{new Claim(ClaimTypes.NameIdentifier,account.Value.Id.ToString()),new Claim(ClaimTypes.Email,email),new Claim(ClaimTypes.Role,account.Value.Role)};
+    var claims=new[]{new Claim(ClaimTypes.NameIdentifier,account.Value.Id.ToString()),new Claim(ClaimTypes.Email,email),new Claim(ClaimTypes.Name,email.Split('@')[0]),new Claim(ClaimTypes.Role,account.Value.Role)};
     await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,new ClaimsPrincipal(new ClaimsIdentity(claims,CookieAuthenticationDefaults.AuthenticationScheme)),new AuthenticationProperties { IsPersistent=remember, AllowRefresh=true, ExpiresUtc=remember?DateTimeOffset.UtcNow.AddDays(30):DateTimeOffset.UtcNow.AddHours(8) });
     var defaultDestination=account.Value.Role=="Admin"?"/dashboard":"/";
     if(!string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith("/") && !returnUrl.StartsWith("//") && !returnUrl.Contains("\\") && (!returnUrl.StartsWith("/dashboard",StringComparison.OrdinalIgnoreCase)||account.Value.Role=="Admin")) return Results.Redirect(returnUrl);
