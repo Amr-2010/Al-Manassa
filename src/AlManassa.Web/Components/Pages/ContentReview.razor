@@ -13,19 +13,19 @@
  <section id="courses" class="panel content-admin-panel">
   <h2>2. @(editing is null?"إضافة كورس جديد":"تعديل بيانات الكورس: "+editing.TitleAr)</h2>
   <p>حدد القسم، ثم أدخل اسم الكورس ووصفه. لن يتم إنشاء دروس تلقائيًا.</p>
-  <form method="post" action="/api/admin/courses/save">
+  <form class="course-editor-form" method="post" action="/api/admin/courses/save">
    <AntiforgeryToken />
    @if(editing is not null){<input type="hidden" name="id" value="@editing.Id" />}
-   <div class="category-form">
+   <div class="course-editor-grid">
     <label>العنوان بالعربية<input name="ar" value="@(editing?.TitleAr??"")" maxlength="250" required /></label>
     <label>العنوان بالإنجليزية<input name="en" value="@(editing?.TitleEn??"")" maxlength="250" required /></label>
     <label>القسم التعليمي<select name="category" required><option value="">اختر القسم</option>@foreach(var subject in subjects.Where(x=>x.Active)){<option value="@subject.Key" selected="@(editing?.Category==subject.Key)">@subject.Name</option>}</select></label>
     <label>المدة بالأسابيع<input name="weeks" type="number" min="1" max="52" value="@(editing?.DurationWeeks??4)" required /></label>
    </div>
-   <label>وصف الكورس<textarea name="description" maxlength="10000" rows="4">@(editing?.Description??"")</textarea></label>
-   <label><input type="checkbox" name="published" value="true" checked="@(editing?.Published??false)" /> منشور للطلاب</label>
-   <div><button type="submit">@(editing is null?"إضافة الكورس":"حفظ التعديلات")</button>
-   @if(editing is not null){<a class="outline" href="/dashboard/content#courses">إلغاء التعديل</a>}</div>
+   <label class="course-description-field">وصف الكورس<textarea name="description" maxlength="10000" rows="5" placeholder="اكتب وصفًا واضحًا لمحتوى الكورس وأهدافه التعليمية">@(editing?.Description??"")</textarea></label>
+   <div class="course-editor-footer"><label class="course-publish-toggle"><input type="checkbox" name="published" value="true" checked="@(editing?.Published??false)" /> منشور للطلاب</label>
+   <div class="course-editor-actions"><button type="submit">@(editing is null?"إضافة الكورس":"حفظ التعديلات")</button>
+   @if(editing is not null){<a class="outline" href="/dashboard/content#courses">إلغاء التعديل</a>}</div></div>
   </form>
   <h3>الكورسات المسجلة (@courses.Count)</h3>
   <div class="content-table-scroll"><table class="content-courses-table"><thead><tr><th>الكورس</th><th>القسم</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>
