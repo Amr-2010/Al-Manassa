@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using AlManassa.Web
 @inject ContentEditor Editor
+@inject CurriculumAiService Ai
 <PageTitle>مراجعة المحتوى | المنصة</PageTitle>
 <main dir="rtl" style="max-width:1150px;margin:32px auto;padding:20px">
  <a href="/dashboard">← لوحة الإدارة</a>
@@ -11,6 +12,18 @@
  <p>التعديلات تحفظ مباشرة في PostgreSQL. تحقق من الفيديو وصلاحية تضمينه قبل الموافقة.</p>
  @if(message is not null){<p role="status">@message</p>}
 
+ <section class="panel" style="padding:24px;margin:24px 0">
+ <h2>إنشاء منهج كامل بالذكاء الاصطناعي</h2>
+ <p>يتم حفظ المنهج والأسئلة والامتحان النهائي في PostgreSQL كمقترح للمراجعة. لا ينشر تلقائيًا ولا يتم اختلاق روابط فيديو.</p>
+ <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">
+ <label>موضوع الدورة<input style="width:100%" @bind="aiTopic" placeholder="مثال: الأمن السيبراني" /></label>
+ <label>المستوى<select style="width:100%" @bind="aiLevel"><option value="Beginner">مبتدئ</option><option value="Intermediate">متوسط</option><option value="Advanced">متقدم</option></select></label>
+ <label>اللغة<select style="width:100%" @bind="aiLanguage"><option value="Arabic">العربية</option><option value="English">English</option></select></label>
+ <label>عدد الأسابيع<input style="width:100%" type="number" min="1" max="24" @bind="aiWeeks" /></label>
+ </div>
+ <button disabled="@generating" @onclick="GenerateAi">@(generating?"جارٍ إعداد المنهج...":"إنشاء المنهج بالذكاء الاصطناعي")</button>
+ @if(aiResult is not null){<p role="status">@aiResult</p>}
+ </section>
  <section class="panel" style="padding:24px;margin:24px 0">
  <h2>إدارة الدورات بالكامل</h2><p>إنشاء وتعديل ونشر وإلغاء نشر الدورات. الحذف ممنوع للدورات التي تحتوي مراحل أو تسجيلات حفاظًا على بيانات الطلاب.</p>
  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
@@ -63,6 +76,8 @@
  }
 </main>
 @code {
+ string aiTopic="",aiLevel="Beginner",aiLanguage="Arabic";int aiWeeks=8;bool generating;string? aiResult;
+ async Task GenerateAi(){generating=true;aiResult=null;try{var id=await Ai.GenerateAsync(aiTopic,aiLevel,aiLanguage,aiWeeks);aiResult="تم حفظ مقترح المنهج والامتحان في قاعدة البيانات للمراجعة. رقم المقترح: "+id;}catch(Exception){aiResult="تعذر إنشاء المنهج. تحقق من إعداد OPENAI_API_KEY واتصال PostgreSQL ومن صحة المحتوى.";}finally{generating=false;}}
  List<ContentEditor.AdminCourse> courses=new();
  List<(Guid Id,Guid CourseId,string Title,int Position)> stages=new();
  Guid? editingCourse;Guid selectedCourse;string courseAr="",courseEn="",courseDescription="",courseCategory="General",newStageTitle="",newLessonTitle="",newLessonContent="";int courseWeeks=4;bool coursePublished;
