@@ -17,10 +17,7 @@
 @foreach(var subject in Subjects){<button class="subject-tile" @onclick="()=>SelectSubject(subject.Key)"><span class="subject-icon">@subject.Icon</span><strong>@subject.Name</strong><small>عرض الدورات المتاحة</small></button>}
 </div></section>
 <section class="learning-paths" id="tracks"><div class="section-heading"><div><span class="eyebrow">LEARNING PATHWAYS</span><h2>اختر طريقة التعلم المناسبة</h2></div></div><div class="path-grid">
-<article><span>01 / SHORT COURSES</span><h3>الدورات القصيرة</h3><p>مهارات محددة بخطة تعليمية مرنة.</p><a href="#courses">استكشف الدورات</a></article>
-<article><span>02 / EXPERT TRACKS</span><h3>المسارات الاحترافية</h3><p>سلسلة دورات مترابطة لتطوير خبرتك خطوة بخطوة.</p><a href="#courses">تصفح المحتوى المتاح</a></article>
-<article id="certificates"><span>03 / CERTIFICATES</span><h3>الشهادات التعليمية</h3><p>مسارات مستقبلية تتضمن التقييم وإثبات إتمام التعلم بعد تفعيل نظام الشهادات.</p><a href="/register">إنشاء حساب</a></article>
-<article><span>04 / AI LEARNING</span><h3>مناهج مقترحة بالذكاء الاصطناعي</h3><p>مقترحات تعليمية يراجعها فريق الإدارة قبل نشرها.</p><a href="/register">ابدأ رحلتك</a></article>
+@foreach(var path in Paths){<article><span>@path.Code</span><h3>@path.Title</h3><p>@path.Description</p><a href="@path.Url">اكتشف المزيد</a></article>}
 </div></section>
 <section class="course-section" id="courses"><div class="section-heading"><div><span class="eyebrow">EXPLORE COURSES</span><h2>@(english ? "Featured courses" : "اكتشف الدورات التعليمية")</h2></div><p>تعلم في أي وقت ومن أي مكان</p></div>
   <div class="catalog-toolbar"><label>ابحث عن دورة <input type="search" @bind="search" @bind:event="oninput" placeholder="اسم الدورة أو المجال..." /></label><button @onclick="ClearFilters">جميع التخصصات</button>@if(!string.IsNullOrEmpty(categoryFilter)){<span>التخصص: @categoryFilter</span>}</div>
@@ -35,21 +32,8 @@
 <footer>© 2026 المنصة | Al-Manassa</footer>
 @code {
  string search=""; string categoryFilter="";
- record SubjectItem(string Name,string Key,string Icon);
- readonly List<SubjectItem> Subjects=new() {
- new("البرمجة وتطوير التطبيقات","Programming","⌘"),
- new("الذكاء الاصطناعي","Technology","✦"),
- new("إدارة الأعمال","Business","◈"),
- new("الأمن السيبراني","Cyber Security","◇"),
- new("التصميم والإبداع","Design","✳"),
- new("التسويق الرقمي","Marketing","◎"),
- new("اللغات","Languages","文"),
- new("العلوم والهندسة","Science","⚙"),
- new("التعليم والتدريب","Teaching","✎"),
- new("الصحة والطب","Health","✚"),
- new("تحليل البيانات","Data","▥"),
- new("المهارات الشخصية","Skills","✧")
- };
+ List<SubjectItem> Subjects=new();
+ List<LearningPathItem> Paths=new();
  List<CourseItem> FilteredCourses => courses.Where(x =>
  (string.IsNullOrWhiteSpace(categoryFilter) || x.Category.Equals(categoryFilter,StringComparison.OrdinalIgnoreCase)) &&
  (string.IsNullOrWhiteSpace(search) || x.TitleAr.Contains(search,StringComparison.OrdinalIgnoreCase) || x.TitleEn.Contains(search,StringComparison.OrdinalIgnoreCase) || x.Category.Contains(search,StringComparison.OrdinalIgnoreCase))
@@ -61,7 +45,7 @@
  string? error;
  List<CourseItem> courses=new();
  protected override async Task OnInitializedAsync() => await Load();
- async Task Load() {loading=true;error=null;try {courses=await Store.PublishedAsync();}catch(Exception){error="Database unavailable";}finally{loading=false;}}
+ async Task Load() {loading=true;error=null;try {courses=await Store.PublishedAsync();Subjects=await Store.SubjectsAsync();Paths=await Store.LearningPathsAsync();}catch(Exception){error="Database unavailable";}finally{loading=false;}}
  void ToggleLanguage()=>english=!english;
  string CategoryIcon(string c)=>c.ToLowerInvariant() switch {"technology"=>"✦","programming"=>"⌘","business"=>"◈",_=>"◆"};
 }
