@@ -1,0 +1,1 @@
+Approved logo reference: approved-logo-reference.png (the first orbital M/play logo). Existing logo.svg is a legacy starter placeholder and MUST NOT be treated as the approved logo. The approved raster reference includes a white background; transparent/vector reconstruction is pending.

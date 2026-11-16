@@ -1,0 +1,6 @@
+@page "/"
+@rendermode InteractiveServer
+<PageTitle>المنصة | Al-Manassa</PageTitle>
+<header><div class="brand"><span class="mark">◎</span><div>المنصة<small>Al-Manassa</small></div></div><button @onclick="ToggleLanguage">@(english ? "العربية" : "English")</button><a class="dash-link" href="/dashboard">لوحة الإدارة (تجريبية)</a></header>
+<main dir="@(english ? "ltr" : "rtl")"><section class="hero"><span class="eyebrow">Al-Manassa • Learning Platform</span><h1>@(english ? "Learn today. Lead tomorrow." : "تعلم اليوم.. واصنع مستقبلك")</h1><p>@(english ? "An integrated learning experience across devices." : "تجربة تعليمية متكاملة على الكمبيوتر والموبايل")</p><a href="#courses">@(english ? "Explore courses" : "استكشف الدورات")</a></section><h2 id="courses">@(english ? "Featured courses" : "الدورات المميزة")</h2><div class="courses">@foreach(var course in courses){<article><div class="course-icon">✦</div><h3>@(english ? course.En : course.Ar)</h3><p>@(english ? "Demo course" : "دورة تجريبية")</p></article>}</div></main><footer>المنصة | Al-Manassa © 2026</footer>
+@code { bool english; void ToggleLanguage() => english = !english; (string Ar,string En)[] courses = {("مقدمة في البرمجة","Programming Basics"),("مهارات الأعمال","Business Skills"),("أساسيات الذكاء الاصطناعي","AI Fundamentals")}; }

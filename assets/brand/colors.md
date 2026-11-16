@@ -1,0 +1,1 @@
+Gold #F49B00; Yellow #FFB21E; Brown #4B291E; Cream #FFFAF3; White #FFFFFF. Source inspiration: supplied stationery identity image. Logo is a newly authored vector starter, not a copy of a protected existing mark.
