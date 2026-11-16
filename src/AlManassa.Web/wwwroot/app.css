@@ -66,3 +66,29 @@ button:hover,.panel button:hover{background:var(--brand-navy-light)}
 #almanassa-splash{background:linear-gradient(145deg,#17365e,#426e9d);color:var(--brand-gold)}
 #almanassa-splash .splash-symbol{background:linear-gradient(135deg,#ffe17a,#ff9f0d);color:var(--brand-navy);box-shadow:0 14px 38px #071d3966}
 #almanassa-splash .splash-spinner{border-color:#ffffff55;border-top-color:var(--brand-gold)}
+
+
+/* FutureLearn-inspired course discovery sections, Al-Manassa original visual identity */
+.catalog-section,.learning-paths{margin:55px 0 65px}
+.subject-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px}
+.subject-tile{display:flex;flex-direction:column;align-items:flex-start;text-align:right;gap:10px;min-height:160px;border:1px solid #dce6f2;background:#fff;color:#173b69;border-radius:18px;padding:23px;box-shadow:0 8px 22px #14375b0b;transition:transform .2s,border-color .2s}
+.subject-tile:hover{transform:translateY(-4px);background:#f9fbff;border-color:#f5b535}
+.subject-icon{font-size:30px;color:#e49b19}.subject-tile strong{font-size:17px}.subject-tile small{color:#7186a0;font-size:12px}
+.path-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:17px}
+.path-grid article{background:linear-gradient(150deg,#173b69,#37689b);border-radius:19px;color:white;padding:28px;min-height:265px;display:flex;flex-direction:column}
+.path-grid article:nth-child(even){background:linear-gradient(145deg,#244e7b,#517da9)}
+.path-grid article span{font-size:11px;color:#ffda72;letter-spacing:1px}
+.path-grid article h3{font-size:23px;margin:25px 0 8px}
+.path-grid article p{color:#e1ebf7;line-height:1.8;font-size:14px}
+.path-grid article a{margin-top:auto;color:#ffdc81;text-decoration:none;font-weight:bold}
+.catalog-toolbar{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin-bottom:22px;padding:20px;background:#fff;border:1px solid #e0e8f2;border-radius:16px}
+.catalog-toolbar label{flex:1;min-width:200px;color:#173b69;font-weight:bold;font-size:13px}
+.catalog-toolbar input{display:block;width:100%;margin-top:8px;padding:12px 15px;border:1px solid #cbd9e9;border-radius:10px;font:inherit}
+.catalog-toolbar button{background:#173b69;border-radius:10px}
+.catalog-toolbar span{font-size:12px;color:#b37809}
+.join-banner{display:flex;justify-content:space-between;align-items:center;gap:25px;padding:40px 6%;border-radius:22px;margin:10px 0 45px;background:linear-gradient(110deg,#e6eef8,#f9f6e8);border:1px solid #dce6f2}
+.join-banner h2{font-size:32px;color:#173b69;margin:12px 0}
+.join-banner p{max-width:700px;line-height:1.8;color:#5b7391}
+.join-banner a{background:#ffc34c;color:#173b69;text-decoration:none;padding:16px 24px;border-radius:12px;font-weight:bold;white-space:nowrap}
+@media(max-width:1050px){.subject-grid{grid-template-columns:repeat(3,1fr)}.path-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.subject-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.subject-tile{padding:15px;min-height:140px}.path-grid{grid-template-columns:1fr}.join-banner{display:block}.join-banner a{display:inline-block;margin-top:15px}.catalog-section,.learning-paths{margin:35px 0}}
