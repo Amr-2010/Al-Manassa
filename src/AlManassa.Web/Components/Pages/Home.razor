@@ -4,7 +4,7 @@
 @inject CourseStore Store
 <PageTitle>المنصة | Al-Manassa</PageTitle>
 <header class="site-header">
-  <a class="brand" href="/"><span class="brand-icon">▶</span><span>المنصة<small>Al-Manassa</small></span></a>
+  <a class="brand" href="/"><img class="official-brand-logo" src="/almanassa-official-logo.webp" alt="المنصة Al-Manassa" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'" /><span class="brand-fallback" style="display:none">المنصة<small>Al-Manassa</small></span></a>
   <nav class="site-nav"><a href="#subjects">التخصصات</a><a href="#courses">الدورات</a><a href="#tracks">المسارات</a><a href="#certificates">الشهادات</a><a href="#about">عن المنصة</a></nav>
   <div class="header-actions"><button @onclick="ToggleLanguage">@(english ? "العربية" : "English")</button><a class="dash-link" href="/dashboard">لوحة الإدارة</a></div>
 </header>
