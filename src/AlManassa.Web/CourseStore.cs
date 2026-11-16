@@ -1,7 +1,7 @@
 using Npgsql;
 namespace AlManassa.Web;
 public record CourseItem(Guid Id,string TitleAr,string TitleEn,string Description,string Category,int DurationWeeks,bool Published);
-public record SubjectItem(string Name,string Key,string Icon,bool Active=true);
+public record SubjectItem(string Name,string Key,string Icon,bool Active=true,string Description="");
 public record LearningPathItem(string Code,string Title,string Description,string Url);
 public sealed class CourseStore(IConfiguration config)
 {
@@ -48,9 +48,9 @@ public sealed class CourseStore(IConfiguration config)
 
     public async Task<List<SubjectItem>> SubjectsAsync(CancellationToken ct=default) {
         await using var conn=new NpgsqlConnection(ConnectionString);await conn.OpenAsync(ct);
-        await using var cmd=new NpgsqlCommand("select name_ar,slug,icon from subjects where active=true order by sort_order,name_ar",conn);
+        await using var cmd=new NpgsqlCommand("select name_ar,slug,icon,description_ar from subjects where active=true order by sort_order,name_ar",conn);
         await using var r=await cmd.ExecuteReaderAsync(ct);var list=new List<SubjectItem>();
-        while(await r.ReadAsync(ct)) list.Add(new(r.GetString(0),r.GetString(1),r.GetString(2)));
+        while(await r.ReadAsync(ct)) list.Add(new(r.GetString(0),r.GetString(1),r.GetString(2),true,r.GetString(3)));
         return list;
     }
     public async Task<List<LearningPathItem>> LearningPathsAsync(CancellationToken ct=default) {
@@ -63,16 +63,16 @@ public sealed class CourseStore(IConfiguration config)
 
     public async Task<List<SubjectItem>> AllSubjectsAsync(CancellationToken ct=default) {
         await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync(ct);
-        await using var cmd=new NpgsqlCommand("SELECT name_ar,slug,icon,active FROM subjects ORDER BY sort_order,name_ar",db);
+        await using var cmd=new NpgsqlCommand("SELECT name_ar,slug,icon,active,description_ar FROM subjects ORDER BY sort_order,name_ar",db);
         var result=new List<SubjectItem>();await using var rd=await cmd.ExecuteReaderAsync(ct);
-        while(await rd.ReadAsync(ct)) result.Add(new(rd.GetString(0),rd.GetString(1),rd.GetString(2),rd.GetBoolean(3)));
+        while(await rd.ReadAsync(ct)) result.Add(new(rd.GetString(0),rd.GetString(1),rd.GetString(2),rd.GetBoolean(3),rd.GetString(4)));
         return result;
     }
-    public async Task SaveSubjectAsync(string slug,string name,string icon,CancellationToken ct=default) {
-        if(string.IsNullOrWhiteSpace(slug)||slug.Length>100||string.IsNullOrWhiteSpace(name)||name.Length>200||icon.Length>20)throw new ArgumentException("Invalid category");
+    public async Task SaveSubjectAsync(string slug,string name,string icon,string description="",CancellationToken ct=default) {
+        if(string.IsNullOrWhiteSpace(slug)||slug.Length>100||string.IsNullOrWhiteSpace(name)||name.Length>200||icon.Length>20||description.Length>3000)throw new ArgumentException("Invalid category");
         await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync(ct);
-        await using var cmd=new NpgsqlCommand("INSERT INTO subjects(slug,name_ar,name_en,icon,sort_order,active) VALUES(@slug,@name,@name,@icon,(SELECT COALESCE(MAX(sort_order),0)+1 FROM subjects),true) ON CONFLICT(slug) DO UPDATE SET name_ar=EXCLUDED.name_ar,icon=EXCLUDED.icon,active=true",db);
-        cmd.Parameters.AddWithValue("slug",slug.Trim());cmd.Parameters.AddWithValue("name",name.Trim());cmd.Parameters.AddWithValue("icon",icon.Trim());await cmd.ExecuteNonQueryAsync(ct);
+        await using var cmd=new NpgsqlCommand("INSERT INTO subjects(slug,name_ar,name_en,icon,description_ar,sort_order,active) VALUES(@slug,@name,@name,@icon,@description,(SELECT COALESCE(MAX(sort_order),0)+1 FROM subjects),true) ON CONFLICT(slug) DO UPDATE SET name_ar=EXCLUDED.name_ar,icon=EXCLUDED.icon,description_ar=EXCLUDED.description_ar,active=true",db);
+        cmd.Parameters.AddWithValue("slug",slug.Trim());cmd.Parameters.AddWithValue("name",name.Trim());cmd.Parameters.AddWithValue("icon",icon.Trim());cmd.Parameters.AddWithValue("description",description.Trim());await cmd.ExecuteNonQueryAsync(ct);
     }
     public async Task<string> DeleteSubjectAsync(string slug,CancellationToken ct=default) {
         await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync(ct);
@@ -156,8 +156,10 @@ public sealed class CourseStore(IConfiguration config)
               name_en varchar(200) NOT NULL,
               icon varchar(20) NOT NULL DEFAULT '◆',
               sort_order integer NOT NULL DEFAULT 0,
-              active boolean NOT NULL DEFAULT true
+              active boolean NOT NULL DEFAULT true,
+              description_ar text NOT NULL DEFAULT ''
             );
+            ALTER TABLE subjects ADD COLUMN IF NOT EXISTS description_ar text NOT NULL DEFAULT '';
             CREATE TABLE IF NOT EXISTS learning_paths (
               code varchar(60) PRIMARY KEY,
               title_ar varchar(200) NOT NULL,
@@ -243,11 +245,7 @@ public sealed class CourseStore(IConfiguration config)
             ('CERTIFICATES','الشهادات التعليمية','Certificates','تقييمات وشهادات بعد تفعيل النظام.','Certificates after activation','/register',3),
             ('AI LEARNING','مناهج مقترحة بالذكاء الاصطناعي','AI Learning','مقترحات يراجعها فريق الإدارة قبل نشرها.','AI suggestions reviewed before publishing','/register',4)
             ON CONFLICT(code) DO NOTHING;
-            INSERT INTO courses(id,title_ar,title_en,description,category,duration_weeks,published) VALUES
-            ('11111111-1111-4111-8111-111111111111','أساسيات الذكاء الاصطناعي','AI Fundamentals','تعرف على مفاهيم وتطبيقات الذكاء الاصطناعي.','Technology',8,true),
-            ('22222222-2222-4222-8222-222222222222','تطوير تطبيقات .NET','Developing with .NET','تعلم تطوير تطبيقات حديثة باستخدام .NET.','Programming',6,true),
-            ('33333333-3333-4333-8333-333333333333','التسويق الرقمي','Digital Marketing','أساسيات التسويق عبر القنوات الرقمية.','Business',4,true)
-            ON CONFLICT (id) DO NOTHING;
+
             """;
         await using var cmd=new NpgsqlCommand(ddl,conn,tx);
         await cmd.ExecuteNonQueryAsync(ct);
