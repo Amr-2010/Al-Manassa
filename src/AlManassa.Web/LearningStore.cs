@@ -95,7 +95,7 @@ public sealed class LearningStore(IConfiguration config) {
             WHERE q.course_id=@course AND q.stage_id IS NOT DISTINCT FROM @stage
             AND q.is_final=@final ORDER BY q.position,o.id
             """,conn);
-        cmd.Parameters.AddWithValue("course",courseId);cmd.Parameters.AddWithValue("stage",stageId.HasValue?(object)stageId.Value:DBNull.Value);
+        cmd.Parameters.AddWithValue("course",courseId);cmd.Parameters.Add("stage",NpgsqlTypes.NpgsqlDbType.Uuid).Value=stageId.HasValue?(object)stageId.Value:DBNull.Value;
         cmd.Parameters.AddWithValue("final",stageId is null);
         var list=new List<QuestionInfo>();await using var r=await cmd.ExecuteReaderAsync(ct);
         while(await r.ReadAsync(ct)){
@@ -111,7 +111,7 @@ public sealed class LearningStore(IConfiguration config) {
         async Task<long> Scalar(string sql,Action<NpgsqlCommand>? extra=null){
             await using var cmd=new NpgsqlCommand(sql,conn,tx);
             cmd.Parameters.AddWithValue("user",userId);cmd.Parameters.AddWithValue("course",courseId);
-            cmd.Parameters.AddWithValue("stage",stageId.HasValue?(object)stageId.Value:DBNull.Value);
+            cmd.Parameters.Add("stage",NpgsqlTypes.NpgsqlDbType.Uuid).Value=stageId.HasValue?(object)stageId.Value:DBNull.Value;
             extra?.Invoke(cmd);return Convert.ToInt64(await cmd.ExecuteScalarAsync(ct)??0);
         }
         if(await Scalar("SELECT count(*) FROM course_enrollments WHERE user_id=@user AND course_id=@course")!=1) return new(false,0,"غير مسجل في الدورة");
@@ -135,7 +135,7 @@ public sealed class LearningStore(IConfiguration config) {
             WHERE q.course_id=@course AND q.stage_id IS NOT DISTINCT FROM @stage AND q.is_final=@final
             """,conn,tx);
         questions.Parameters.AddWithValue("course",courseId);
-        questions.Parameters.AddWithValue("stage",stageId.HasValue?(object)stageId.Value:DBNull.Value);
+        questions.Parameters.Add("stage",NpgsqlTypes.NpgsqlDbType.Uuid).Value=stageId.HasValue?(object)stageId.Value:DBNull.Value;
         questions.Parameters.AddWithValue("final",stageId is null);
         var options=new Dictionary<Guid,Dictionary<Guid,bool>>();
         await using(var reader=await questions.ExecuteReaderAsync(ct)){
@@ -156,7 +156,7 @@ public sealed class LearningStore(IConfiguration config) {
             VALUES (@id,@user,@course,@stage,@final,@score,@passed)
             """,conn,tx)){
             insert.Parameters.AddWithValue("id",attemptId);insert.Parameters.AddWithValue("user",userId);
-            insert.Parameters.AddWithValue("course",courseId);insert.Parameters.AddWithValue("stage",stageId.HasValue?(object)stageId.Value:DBNull.Value);
+            insert.Parameters.AddWithValue("course",courseId);insert.Parameters.Add("stage",NpgsqlTypes.NpgsqlDbType.Uuid).Value=stageId.HasValue?(object)stageId.Value:DBNull.Value;
             insert.Parameters.AddWithValue("final",stageId is null);insert.Parameters.AddWithValue("score",score);insert.Parameters.AddWithValue("passed",passed);
             await insert.ExecuteNonQueryAsync(ct);
         }
@@ -176,6 +176,17 @@ public sealed class LearningStore(IConfiguration config) {
             cert.Parameters.AddWithValue("verify",Guid.NewGuid());await cert.ExecuteNonQueryAsync(ct);
         }
         await tx.CommitAsync(ct);return new(passed,score,passed?"اجتزت الاختبار":"يمكنك المحاولة مجددًا");
+    }
+    public async Task<CertificateInfo?> VerifyCertificateAsync(Guid code,CancellationToken ct=default){
+        await using var conn=new NpgsqlConnection(ConnectionString);await conn.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("""
+            SELECT c.verification_code,c.issued_at,u.email,co.title_ar
+            FROM course_certificates c JOIN app_users u ON u.id=c.user_id
+            JOIN courses co ON co.id=c.course_id WHERE c.verification_code=@code
+            """,conn);
+        cmd.Parameters.AddWithValue("code",code);
+        await using var r=await cmd.ExecuteReaderAsync(ct);
+        return await r.ReadAsync(ct)?new(r.GetGuid(0),r.GetDateTime(1),r.GetString(2),r.GetString(3)):null;
     }
     public async Task<CertificateInfo?> CertificateAsync(Guid userId,Guid courseId,CancellationToken ct=default){
         await using var conn=new NpgsqlConnection(ConnectionString);await conn.OpenAsync(ct);
