@@ -25,6 +25,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAntiforgery();
 builder.Services.AddHttpClient("ai", c=>{c.BaseAddress=new Uri("https://api.openai.com/");c.Timeout=TimeSpan.FromSeconds(90);});
+builder.Services.AddHttpClient("gemini", c=>{c.Timeout=TimeSpan.FromSeconds(180);});
 var app = builder.Build();
 app.MapGet("/health", () => Results.Ok(new {status="ok",application="Al-Manassa Web"}));
 app.MapGet("/health/database", async (CourseStore store, CancellationToken ct) => { try { var counts = await store.CountsAsync(ct); return Results.Ok(new {status="connected",courseCount=counts.Total}); } catch (Exception ex) { var reason = ex switch { InvalidOperationException => "configuration_missing", Npgsql.PostgresException pg when pg.SqlState == "42P01" => "schema_missing", Npgsql.PostgresException pg when pg.SqlState == "28P01" => "authentication_failed", Npgsql.NpgsqlException => "connection_failed", _ => "database_error" }; return Results.Json(new {status="unavailable",reason},statusCode:503); } });
@@ -198,7 +199,7 @@ app.MapPost("/api/admin/curriculum/generate",async (HttpContext ctx,IAntiforgery
   var id=await ai.GenerateAsync(f["topic"].ToString(),f["level"].ToString(),f["language"].ToString(),weeks);
   return Results.Redirect("/dashboard/content?notice="+Uri.EscapeDataString("تم إنشاء مسودة المنهج للمراجعة، رقم المقترح: "+id)+"#ai-generator");
  }catch(Exception ex){
-  var message=ex is InvalidOperationException && ex.Message.Contains("OPENAI_API_KEY")?"مفتاح OPENAI_API_KEY غير مضاف على الخادم":ex.Message;
+  var message=ex is InvalidOperationException && ex.Message.Contains("GEMINI_API_KEY")?"مفتاح GEMINI_API_KEY غير مضاف على الخادم":ex.Message;
   return Results.Redirect("/dashboard/content?notice="+Uri.EscapeDataString("فشل إنشاء المنهج: "+message)+"#ai-generator");
  }
 }).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
