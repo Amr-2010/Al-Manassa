@@ -30,15 +30,13 @@ public sealed class CurriculumAiService(IConfiguration config,IHttpClientFactory
    });
    return await client.SendAsync(request);
   }
-  using var response=await RequestAsync(model);
-  if(!response.IsSuccessStatusCode){
-   var errorBody=await response.Content.ReadAsStringAsync();
-   string detail="";
-   try{
-    using var errorJson=JsonDocument.Parse(errorBody);
-    detail=errorJson.RootElement.GetProperty("error").GetProperty("message").GetString()??"";
-   }catch(JsonException){}
-   if((int)response.StatusCode==429)throw new InvalidOperationException("تم الوصول إلى حد الاستخدام المتاح لـ Gemini. حاول لاحقًا.");
+  async Task<string> GetErrorAsync(HttpResponseMessage res){
+   var body=await res.Content.ReadAsStringAsync();
+   try{using var doc=JsonDocument.Parse(body);return doc.RootElement.GetProperty("error").GetProperty("message").GetString()??"";}
+   catch(Exception){return body.Length>250?body[..250]:body;}
+  }
+  HttpResponseMessage response=await RequestAsync(model);
+  try{
    if((int)response.StatusCode==404){
     using var listRequest=new HttpRequestMessage(HttpMethod.Get,"https://generativelanguage.googleapis.com/v1beta/models?pageSize=100");
     listRequest.Headers.Add("x-goog-api-key",key);
@@ -48,16 +46,33 @@ public sealed class CurriculumAiService(IConfiguration config,IHttpClientFactory
      var names=new List<string>();
      if(available.RootElement.TryGetProperty("models",out var models)){
       foreach(var item in models.EnumerateArray()){
-       if(item.TryGetProperty("supportedGenerationMethods",out var methods)&&methods.EnumerateArray().Any(x=>x.GetString()=="generateContent")
-        &&item.TryGetProperty("name",out var name))names.Add(name.GetString()!.Replace("models/",""));
+       if(item.TryGetProperty("supportedGenerationMethods",out var methods)
+         &&methods.EnumerateArray().Any(x=>x.GetString()=="generateContent")
+         &&item.TryGetProperty("name",out var name)){
+        var n=name.GetString();
+        if(!string.IsNullOrWhiteSpace(n))names.Add(n.Replace("models/",""));
+       }
       }
      }
-     var suggestion=names.FirstOrDefault(x=>x.Contains("flash",StringComparison.OrdinalIgnoreCase))??names.FirstOrDefault();
-     throw new InvalidOperationException("النموذج "+model+" غير متاح لهذا المفتاح. "+(suggestion is null?"لم تُرجع Google نموذجًا متاحًا.":"جرّب ضبط GEMINI_MODEL على "+suggestion)+" — "+detail);
+     // Prefer Flash variants for the lower-cost/free-tier use case; never select Pro automatically.
+     var alternative=names.Where(x=>x.Contains("flash",StringComparison.OrdinalIgnoreCase)
+       &&!x.Contains("preview",StringComparison.OrdinalIgnoreCase)
+       &&!x.Equals(model,StringComparison.OrdinalIgnoreCase))
+       .OrderByDescending(x=>x.Contains("2.5",StringComparison.OrdinalIgnoreCase))
+       .ThenBy(x=>x).FirstOrDefault();
+     if(alternative is not null){
+      response.Dispose();
+      response=await RequestAsync(alternative);
+     }
     }
    }
-   throw new InvalidOperationException("Gemini HTTP "+(int)response.StatusCode+": "+(detail.Length>350?detail[..350]:detail));
-  }
+   if(!response.IsSuccessStatusCode){
+    var detail=await GetErrorAsync(response);
+    if((int)response.StatusCode==429)throw new InvalidOperationException("تم الوصول إلى حد الاستخدام المتاح لـ Gemini. حاول لاحقًا.");
+    if((int)response.StatusCode==404)throw new InvalidOperationException("لا يوجد نموذج Gemini Flash متاح لهذا المفتاح. "+detail);
+    if((int)response.StatusCode==403)throw new InvalidOperationException("المفتاح غير مصرح له باستخدام Gemini: "+detail);
+    throw new InvalidOperationException("Gemini HTTP "+(int)response.StatusCode+": "+(detail.Length>300?detail[..300]:detail));
+   }
   using var outer=JsonDocument.Parse(await response.Content.ReadAsStringAsync());
   var raw=string.Concat(outer.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts").EnumerateArray().Select(x=>x.TryGetProperty("text",out var t)?t.GetString():""));
   if(string.IsNullOrWhiteSpace(raw))throw new InvalidOperationException("Empty Gemini response");
@@ -68,5 +83,6 @@ public sealed class CurriculumAiService(IConfiguration config,IHttpClientFactory
   var id=Guid.NewGuid();
   await store.SaveSuggestionAsync(id,topic,level,language,weeks,raw,"Gemini");
   return id;
+  }finally{response.Dispose();}
  }
 }
