@@ -39,6 +39,16 @@ app.MapPost("/api/admin/ai/curriculum", async (HttpContext ctx, CurriculumInput 
         return Results.Problem("AI or database operation failed; check server configuration",statusCode:503);
     }
 });
+
+// Bootstrap only the dedicated Al-Manassa schema. SQL uses IF NOT EXISTS and ON CONFLICT DO NOTHING.
+using (var scope=app.Services.CreateScope()) {
+    try {
+        await scope.ServiceProvider.GetRequiredService<CourseStore>().EnsureDemoSchemaAsync();
+        app.Logger.LogInformation("Al-Manassa database schema ready");
+    } catch (Exception ex) {
+        app.Logger.LogError("Al-Manassa database initialization failed ({ErrorType})",ex.GetType().Name);
+    }
+}
 app.UseStaticFiles();
 app.MapStaticAssets();
 app.UseAntiforgery();
