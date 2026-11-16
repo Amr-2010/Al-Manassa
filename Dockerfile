@@ -7,6 +7,8 @@ RUN dotnet restore src/AlManassa.Web/AlManassa.Web.csproj
 COPY src/AlManassa.Web/ src/AlManassa.Web/
 RUN dotnet publish src/AlManassa.Web/AlManassa.Web.csproj -c Release -o /app/publish --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
+# Npgsql on slim Linux images requires the Kerberos GSSAPI runtime library.
+RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/publish .
 COPY database/003_sample_curricula.sql /app/database/003_sample_curricula.sql
