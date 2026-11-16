@@ -1,5 +1,17 @@
+@using Microsoft.AspNetCore.Components
 <Router AppAssembly="@typeof(Program).Assembly">
     <Found Context="routeData">
+        @if (routeData.PageType.GetCustomAttributes(typeof(RouteAttribute), true)
+            .OfType<RouteAttribute>().Any(x => x.Template.StartsWith("/dashboard", StringComparison.OrdinalIgnoreCase)))
+        {
+            <nav dir="rtl" class="global-admin-nav" aria-label="التنقل بين أقسام إدارة المناهج">
+                <a href="/dashboard">لوحة الإدارة</a>
+                <a href="/dashboard/subjects">1. الأقسام</a>
+                <a href="/dashboard/content#courses">2. الكورسات</a>
+                <a href="/dashboard/content#course-content">3. الدروس</a>
+                <a href="/dashboard/content#ai-generator">4. الذكاء الاصطناعي</a>
+            </nav>
+        }
         <RouteView RouteData="@routeData" />
     </Found>
 </Router>
