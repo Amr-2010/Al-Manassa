@@ -60,6 +60,27 @@ public sealed class CourseStore(IConfiguration config)
         while(await r.ReadAsync(ct)) list.Add(new(r.GetString(0),r.GetString(1),r.GetString(2),r.GetString(3)));
         return list;
     }
+
+    public async Task<List<SubjectItem>> AllSubjectsAsync(CancellationToken ct=default) {
+        await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("SELECT name_ar,slug,icon FROM subjects ORDER BY sort_order,name_ar",db);
+        var result=new List<SubjectItem>();await using var rd=await cmd.ExecuteReaderAsync(ct);
+        while(await rd.ReadAsync(ct)) result.Add(new(rd.GetString(0),rd.GetString(1),rd.GetString(2)));
+        return result;
+    }
+    public async Task SaveSubjectAsync(string slug,string name,string icon,CancellationToken ct=default) {
+        if(string.IsNullOrWhiteSpace(slug)||slug.Length>100||string.IsNullOrWhiteSpace(name)||name.Length>200||icon.Length>20)throw new ArgumentException("Invalid category");
+        await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("INSERT INTO subjects(slug,name_ar,name_en,icon,sort_order,active) VALUES(@slug,@name,@name,@icon,(SELECT COALESCE(MAX(sort_order),0)+1 FROM subjects),true) ON CONFLICT(slug) DO UPDATE SET name_ar=EXCLUDED.name_ar,icon=EXCLUDED.icon,active=true",db);
+        cmd.Parameters.AddWithValue("slug",slug.Trim());cmd.Parameters.AddWithValue("name",name.Trim());cmd.Parameters.AddWithValue("icon",icon.Trim());await cmd.ExecuteNonQueryAsync(ct);
+    }
+    public async Task DeleteSubjectAsync(string slug,CancellationToken ct=default) {
+        await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("DELETE FROM subjects WHERE slug=@slug AND NOT EXISTS(SELECT 1 FROM courses WHERE category=@slug)",db);
+        cmd.Parameters.AddWithValue("slug",slug);
+        if(await cmd.ExecuteNonQueryAsync(ct)!=1)throw new InvalidOperationException("Category has courses. Move or delete courses first.");
+    }
+
     public async Task SeedCurriculaAsync(CancellationToken ct=default) {
         var path=Path.Combine(AppContext.BaseDirectory,"database","003_sample_curricula.sql");
         if(!File.Exists(path)) throw new FileNotFoundException("Curriculum SQL seed missing",path);
