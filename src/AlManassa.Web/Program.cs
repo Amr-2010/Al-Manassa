@@ -10,6 +10,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(options=>options.Limits.MaxRequestBodySize=55L*1024*1024);
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options=>options.MultipartBodyLengthLimit=55L*1024*1024);
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddScoped<CourseStore>();
 builder.Services.AddScoped<AuthStore>();
