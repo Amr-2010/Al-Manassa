@@ -11,6 +11,64 @@ public sealed class ContentEditor(IConfiguration config) {
    return new NpgsqlConnectionStringBuilder {Host=u.Host,Port=u.IsDefaultPort?5432:u.Port,Database=Uri.UnescapeDataString(u.AbsolutePath.Trim('/')),Username=Uri.UnescapeDataString(parts[0]),Password=parts.Length>1?Uri.UnescapeDataString(parts[1]):"",SslMode=SslMode.Require}.ConnectionString;
   }
  }
+
+ public record AdminCourse(Guid Id,string TitleAr,string TitleEn,string Description,string Category,int DurationWeeks,bool Published);
+ public async Task<List<AdminCourse>> CoursesAsync(){
+  await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
+  await using var cmd=new NpgsqlCommand("SELECT id,title_ar,title_en,COALESCE(description,''),category,duration_weeks,published FROM courses ORDER BY created_at DESC",db);
+  var result=new List<AdminCourse>();await using var r=await cmd.ExecuteReaderAsync();
+  while(await r.ReadAsync())result.Add(new(r.GetGuid(0),r.GetString(1),r.GetString(2),r.GetString(3),r.GetString(4),r.GetInt32(5),r.GetBoolean(6)));
+  return result;
+ }
+ public async Task SaveCourseAsync(Guid? id,string ar,string en,string description,string category,int weeks,bool published){
+  if(string.IsNullOrWhiteSpace(ar)||ar.Length>250||string.IsNullOrWhiteSpace(en)||en.Length>250||description.Length>10000||string.IsNullOrWhiteSpace(category)||category.Length>100||weeks is <1 or >52)throw new ArgumentException("Invalid course");
+  await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
+  await using var cmd=new NpgsqlCommand(id.HasValue?
+   "UPDATE courses SET title_ar=@ar,title_en=@en,description=@description,category=@category,duration_weeks=@weeks,published=@published WHERE id=@id":
+   "INSERT INTO courses(id,title_ar,title_en,description,category,duration_weeks,published) VALUES(@id,@ar,@en,@description,@category,@weeks,@published)",db);
+  cmd.Parameters.AddWithValue("id",id??Guid.NewGuid());cmd.Parameters.AddWithValue("ar",ar.Trim());cmd.Parameters.AddWithValue("en",en.Trim());cmd.Parameters.AddWithValue("description",description.Trim());cmd.Parameters.AddWithValue("category",category.Trim());cmd.Parameters.AddWithValue("weeks",weeks);cmd.Parameters.AddWithValue("published",published);
+  if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Course not found");
+ }
+ public async Task DeleteCourseAsync(Guid id){
+  await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
+  await using var cmd=new NpgsqlCommand("DELETE FROM courses WHERE id=@id AND NOT EXISTS(SELECT 1 FROM course_enrollments WHERE course_id=@id) AND NOT EXISTS(SELECT 1 FROM course_stages WHERE course_id=@id)",db);
+  cmd.Parameters.AddWithValue("id",id);
+  if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Remove stages first; enrolled courses cannot be deleted. Unpublish instead.");
+ }
+ public async Task AddStageAsync(Guid courseId,string title){
+  if(string.IsNullOrWhiteSpace(title)||title.Length>250)throw new ArgumentException("Invalid stage");
+  await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
+  await using var cmd=new NpgsqlCommand("INSERT INTO course_stages(id,course_id,title_ar,position,passing_percent) SELECT @id,@course,@title,COALESCE((SELECT MAX(position)+1 FROM course_stages WHERE course_id=@course),1),70 WHERE EXISTS(SELECT 1 FROM courses WHERE id=@course)",db);
+  cmd.Parameters.AddWithValue("id",Guid.NewGuid());cmd.Parameters.AddWithValue("course",courseId);cmd.Parameters.AddWithValue("title",title.Trim());
+  if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Course not found");
+ }
+ public async Task AddLessonAsync(Guid stageId,string title,string content){
+  if(string.IsNullOrWhiteSpace(title)||title.Length>250||string.IsNullOrWhiteSpace(content)||content.Length>30000)throw new ArgumentException("Invalid lesson");
+  await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
+  await using var cmd=new NpgsqlCommand("INSERT INTO stage_lessons(id,stage_id,title_ar,content,position) SELECT @id,@stage,@title,@content,COALESCE((SELECT MAX(position)+1 FROM stage_lessons WHERE stage_id=@stage),1) WHERE EXISTS(SELECT 1 FROM course_stages WHERE id=@stage)",db);
+  cmd.Parameters.AddWithValue("id",Guid.NewGuid());cmd.Parameters.AddWithValue("stage",stageId);cmd.Parameters.AddWithValue("title",title.Trim());cmd.Parameters.AddWithValue("content",content.Trim());
+  if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Stage not found");
+ }
+ public async Task<List<(Guid Id,Guid CourseId,string Title,int Position)>> StagesAsync(){
+  await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
+  await using var cmd=new NpgsqlCommand("SELECT id,course_id,title_ar,position FROM course_stages ORDER BY course_id,position",db);
+  var list=new List<(Guid,Guid,string,int)>();await using var r=await cmd.ExecuteReaderAsync();
+  while(await r.ReadAsync())list.Add((r.GetGuid(0),r.GetGuid(1),r.GetString(2),r.GetInt32(3)));
+  return list;
+ }
+ public async Task RenameStageAsync(Guid id,string title){
+  if(string.IsNullOrWhiteSpace(title)||title.Length>250)throw new ArgumentException("Invalid title");
+  await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
+  await using var cmd=new NpgsqlCommand("UPDATE course_stages SET title_ar=@title WHERE id=@id",db);
+  cmd.Parameters.AddWithValue("title",title.Trim());cmd.Parameters.AddWithValue("id",id);await cmd.ExecuteNonQueryAsync();
+ }
+ public async Task DeleteLessonAsync(Guid id){
+  await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
+  await using var cmd=new NpgsqlCommand("DELETE FROM stage_lessons WHERE id=@id AND NOT EXISTS(SELECT 1 FROM lesson_completions WHERE lesson_id=@id)",db);
+  cmd.Parameters.AddWithValue("id",id);
+  if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Completed lessons cannot be deleted");
+ }
+
  public async Task<List<AdminLesson>> LessonsAsync() {
   await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
   await using var cmd=new NpgsqlCommand("SELECT l.id,c.title_ar,s.title_ar,l.title_ar,l.content,l.video_provider,l.video_reference FROM stage_lessons l JOIN course_stages s ON s.id=l.stage_id JOIN courses c ON c.id=s.course_id ORDER BY c.title_ar,s.position,l.position",db);
