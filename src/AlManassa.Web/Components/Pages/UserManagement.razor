@@ -1,0 +1,47 @@
+@page "/dashboard/users"
+@attribute [Authorize(Roles="SuperAdmin")]
+@using Microsoft.AspNetCore.Authorization
+@using AlManassa.Web
+@inject AuthStore Users
+@inject NavigationManager Navigation
+<PageTitle>إدارة المستخدمين | المنصة</PageTitle>
+<main dir="rtl" class="content-admin">
+ <h1>إدارة المستخدمين والصلاحيات</h1>
+ <p>إضافة مستخدمين من نوع مدير أو طالب، وتعديل الصلاحيات. حساب المدير الرئيسي محمي ولا يظهر في القائمة.</p>
+ @if(!string.IsNullOrWhiteSpace(notice)){<p class="category-notice" role="status">@notice</p>}
+ @if(!string.IsNullOrWhiteSpace(error)){<p class="category-notice" role="alert">@error</p>}
+ <section class="panel content-admin-panel">
+  <h2>إنشاء مستخدم جديد</h2>
+  <form method="post" action="/api/superadmin/users/create" class="course-editor-form">
+   <AntiforgeryToken />
+   <div class="course-editor-grid">
+    <label>البريد الإلكتروني<input type="email" name="email" maxlength="320" required /></label>
+    <label>كلمة المرور (12 حرفًا على الأقل)<input type="password" name="password" minlength="12" maxlength="128" autocomplete="new-password" required /></label>
+    <label>نوع المستخدم<select name="role"><option value="Student">طالب</option><option value="Admin">مدير (Admin)</option></select></label>
+   </div>
+   <button type="submit">إنشاء المستخدم</button>
+  </form>
+ </section>
+ <section class="panel content-admin-panel">
+  <h2>المستخدمون (@items.Count)</h2>
+  <div class="content-table-scroll">
+   <table class="content-courses-table"><thead><tr><th>البريد الإلكتروني</th><th>نوع الحساب</th><th>تاريخ الإنشاء</th><th>الإجراءات</th></tr></thead><tbody>
+   @foreach(var user in items){
+    <tr><td>@user.Email</td><td>@(user.Role=="Admin"?"مدير":user.Role=="Student"?"طالب":user.Role)</td><td>@user.CreatedAt.ToString("yyyy-MM-dd")</td>
+    <td><form method="post" action="/api/superadmin/users/role" style="display:inline-flex;gap:6px;align-items:center"><AntiforgeryToken /><input type="hidden" name="id" value="@user.Id" /><select name="role"><option value="Student" selected="@(user.Role=="Student")">طالب</option><option value="Admin" selected="@(user.Role=="Admin")">مدير</option></select><button type="submit">حفظ الدور</button></form>
+    <form method="post" action="/api/superadmin/users/delete" style="display:inline-block;margin:5px"><AntiforgeryToken /><input type="hidden" name="id" value="@user.Id" /><button type="submit" onclick="return confirm('تأكيد حذف المستخدم؟')">حذف</button></form></td></tr>
+   }
+   </tbody></table>
+  </div>
+ </section>
+</main>
+@code {
+ List<AuthStore.ManagedUser> items=new();
+ string? notice,error;
+ protected override async Task OnInitializedAsync(){
+  var uri=new Uri(Navigation.Uri);
+  var query=Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+  if(query.TryGetValue("notice",out var n))notice=n.ToString();
+  try{items=await Users.ListManagedAsync();}catch(Exception){error="تعذر تحميل المستخدمين من قاعدة البيانات";}
+ }
+}
