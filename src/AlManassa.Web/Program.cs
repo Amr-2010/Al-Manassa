@@ -14,6 +14,7 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddScoped<CourseStore>();
 builder.Services.AddScoped<AuthStore>();
 builder.Services.AddScoped<LearningStore>();
+builder.Services.AddScoped<LessonMediaStore>();
 builder.Services.AddScoped<ContentEditor>();
 builder.Services.AddScoped<CurriculumAiService>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options => { options.LoginPath="/login"; options.Cookie.Name="AlManassa.Auth"; options.Cookie.HttpOnly=true; options.Cookie.SecurePolicy=CookieSecurePolicy.Always; options.Cookie.SameSite=SameSiteMode.Lax; options.ExpireTimeSpan=TimeSpan.FromDays(30); options.SlidingExpiration=true; options.Events.OnRedirectToLogin=context=>{context.Response.Redirect("/login?returnUrl="+Uri.EscapeDataString(context.Request.Path+context.Request.QueryString));return Task.CompletedTask;}; });
@@ -60,6 +61,7 @@ using (var scope=app.Services.CreateScope()) {
         await scope.ServiceProvider.GetRequiredService<CourseStore>().EnsureDemoSchemaAsync();
         await scope.ServiceProvider.GetRequiredService<CourseStore>().SeedCurriculaAsync();
         await scope.ServiceProvider.GetRequiredService<CourseStore>().SeedFinalExamsAsync();
+        await scope.ServiceProvider.GetRequiredService<LessonMediaStore>().EnsureAsync();
         app.Logger.LogInformation("Al-Manassa database schema ready");
     } catch (Exception ex) {
         app.Logger.LogError("Al-Manassa database initialization failed ({ErrorType})",ex.GetType().Name);
@@ -107,6 +109,19 @@ app.Use(async (ctx,next) => {
     await next();
 });
 
+app.MapGet("/api/lesson-assets/{id:guid}",async (Guid id,HttpContext ctx,LessonMediaStore media)=>{
+ if(ctx.User.Identity?.IsAuthenticated!=true || !Guid.TryParse(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier),out var userId))return Results.Unauthorized();
+ var item=await media.GetAsync(id,userId,ctx.User.IsInRole("Admin"));
+ return item is null?Results.NotFound():Results.File(item.Value.Bytes,item.Value.Mime,enableRangeProcessing:false);
+}).RequireAuthorization();
+app.MapPost("/api/admin/lessons/{lessonId:guid}/assets",async (Guid lessonId,HttpRequest req,LessonMediaStore media)=>{
+ if(!req.HasFormContentType)return Results.BadRequest();
+ var form=await req.ReadFormAsync();var file=form.Files.GetFile("file");
+ if(file is null||file.Length is <1 or >10485760)return Results.BadRequest("File must be 1-10 MB");
+ await using var stream=file.OpenReadStream(10485760);using var ms=new MemoryStream();await stream.CopyToAsync(ms);
+ try {var id=await media.UploadAsync(lessonId,file.FileName,file.ContentType,ms.ToArray());return Results.Ok(new{id});}
+ catch(ArgumentException){return Results.BadRequest("Unsupported file type");}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"}).DisableAntiforgery();
 app.MapStaticAssets();
 app.UseAntiforgery();
 app.MapRazorComponents<AlManassa.Web.Components.App>().AddInteractiveServerRenderMode();
