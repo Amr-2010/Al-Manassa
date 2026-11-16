@@ -11,10 +11,14 @@
 <div class="learning-page" dir="rtl">
  <header class="learning-header"><a href="/">المنصة · Al-Manassa</a><span>مساري التعليمي</span></header>
  <main>
- <h1>مراحل الدورة التعليمية</h1>
+ <h1>@(courseTitle ?? "مراحل الدورة التعليمية")</h1>
+ @if(!string.IsNullOrWhiteSpace(courseDescription)){<p class="learning-description">@courseDescription</p>}
+ <h2>مراحل الدورة التعليمية</h2>
+ @if(courseTitle is null){<div class="learning-notice">تعذر العثور على هذه الدورة أو أنها غير منشورة. <a href="/">العودة إلى الدورات</a></div>}
+ else if(stages.Count==0){<div class="learning-notice">محتوى هذه الدورة لم يُنشر بعد. لا توجد مراحل تعليمية متاحة حاليًا. يرجى مراجعة إدارة المنصة.</div>}
  @if(!string.IsNullOrWhiteSpace(message)){<div class="learning-notice">@message</div>}
- @if(!enrolled){<p>سجّل في الدورة للوصول إلى المحتوى.</p><button @onclick="Enroll">التحاق بالدورة</button>}
- else {
+ @if(courseTitle is not null && stages.Count>0 && !enrolled){<p>سجّل في الدورة للوصول إلى المحتوى.</p><button @onclick="Enroll">التحاق بالدورة</button>}
+ else if(enrolled && stages.Count>0) {
  <div class="learning-stages">
  @foreach(var stage in stages){
  <button class="learning-stage @(stage.Passed?"completed":"")" @onclick="()=>OpenStage(stage.Id)">
@@ -62,13 +66,15 @@
 </div>
 @code{
  [Parameter] public Guid CourseId{get;set;}
+ string? courseTitle,courseDescription;
  Guid userId;bool enrolled;Guid? activeStage;string? message;
  List<StageInfo> stages=new();List<LessonInfo> lessons=new();List<QuestionInfo> questions=new();List<QuestionInfo> finalQuestions=new();
  Dictionary<Guid,Guid> answers=new();Dictionary<Guid,Guid> finalAnswers=new();CertificateInfo? certificate;
  protected override async Task OnInitializedAsync(){
    var state=await Authentication.GetAuthenticationStateAsync();
    if(!Guid.TryParse(state.User.FindFirstValue(ClaimTypes.NameIdentifier),out userId)){message="يجب تسجيل الدخول أولًا";return;}
-   await Refresh();
+   try {var info=await Learning.CourseInfoAsync(CourseId);courseTitle=info?.Title;courseDescription=info?.Description;await Refresh();}
+   catch(Exception){message="تعذر تحميل محتوى الدورة من قاعدة البيانات. يرجى المحاولة لاحقًا.";}
  }
  async Task Refresh(){
    stages=await Learning.StagesAsync(userId,CourseId);
