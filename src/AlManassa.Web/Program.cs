@@ -102,9 +102,9 @@ app.MapPost("/login", async (HttpContext ctx, IAntiforgery af, AuthStore users) 
     if(email.Length>320||password.Length>1024) return Results.BadRequest();
     var account=await users.ValidateAsync(email,password);
     if(account is null) return Results.Content("بيانات الدخول غير صحيحة. <a href='/login'>حاول مرة أخرى</a>","text/html; charset=utf-8",statusCode:401);
-    var claims=new[]{new Claim(ClaimTypes.NameIdentifier,account.Value.Id.ToString()),new Claim(ClaimTypes.Email,email),new Claim(ClaimTypes.Name,email.Split('@')[0]),new Claim(ClaimTypes.Role,account.Value.Role)};
+    var claims=new[]{new Claim(ClaimTypes.NameIdentifier,account.Value.Id.ToString()),new Claim(ClaimTypes.Email,email),new Claim(ClaimTypes.Name,email.Split('@')[0]),new Claim(ClaimTypes.Role,account.Value.Role)}.Concat(account.Value.Role=="SuperAdmin"?new[]{new Claim(ClaimTypes.Role,"Admin")}:Array.Empty<Claim>()).ToArray();
     await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,new ClaimsPrincipal(new ClaimsIdentity(claims,CookieAuthenticationDefaults.AuthenticationScheme)),new AuthenticationProperties { IsPersistent=remember, AllowRefresh=true, ExpiresUtc=remember?DateTimeOffset.UtcNow.AddDays(30):DateTimeOffset.UtcNow.AddHours(8) });
-    var defaultDestination=account.Value.Role=="Admin"?"/dashboard":"/";
+    var defaultDestination=account.Value.Role is "Admin" or "SuperAdmin"?"/dashboard":"/";
     if(!string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith("/") && !returnUrl.StartsWith("//") && !returnUrl.Contains("\\") && (!returnUrl.StartsWith("/dashboard",StringComparison.OrdinalIgnoreCase)||account.Value.Role=="Admin")) return Results.Redirect(returnUrl);
     return Results.Redirect(defaultDestination);
 });
@@ -124,6 +124,25 @@ app.Use(async (ctx,next) => {
 
 
 
+static string UserRedirect(string message)=>"/dashboard/users?notice="+Uri.EscapeDataString(message);
+app.MapPost("/api/superadmin/users/create",async (HttpContext ctx,IAntiforgery af,AuthStore users)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();
+ try{await users.CreateManagedAsync(f["email"].ToString(),f["password"].ToString(),f["role"].ToString());return Results.Redirect(UserRedirect("تم إنشاء المستخدم"));}
+ catch(Exception ex){return Results.Redirect(UserRedirect("تعذر الإنشاء: "+ex.Message));}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="SuperAdmin"});
+app.MapPost("/api/superadmin/users/role",async (HttpContext ctx,IAntiforgery af,AuthStore users)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();
+ try{await users.ChangeManagedRoleAsync(Guid.Parse(f["id"].ToString()),f["role"].ToString());return Results.Redirect(UserRedirect("تم تعديل صلاحية المستخدم"));}
+ catch(Exception ex){return Results.Redirect(UserRedirect("تعذر تعديل الصلاحية: "+ex.Message));}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="SuperAdmin"});
+app.MapPost("/api/superadmin/users/delete",async (HttpContext ctx,IAntiforgery af,AuthStore users)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();
+ try{await users.DeleteManagedAsync(Guid.Parse(f["id"].ToString()));return Results.Redirect(UserRedirect("تم حذف المستخدم"));}
+ catch(Exception ex){return Results.Redirect(UserRedirect("تعذر الحذف: "+ex.Message));}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="SuperAdmin"});
 static string AdminContentRedirect(string message, Guid? course=null) =>
  "/dashboard/content?notice="+Uri.EscapeDataString(message)+(course.HasValue?"&course="+course.Value:"")+(course.HasValue?"#course-content":"#courses");
 app.MapPost("/api/admin/courses/save",async (HttpContext ctx,IAntiforgery af,ContentEditor editor)=>{
