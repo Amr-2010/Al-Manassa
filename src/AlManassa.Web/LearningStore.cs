@@ -9,6 +9,13 @@ public sealed class LearningStore(IConfiguration config) {
             return new NpgsqlConnectionStringBuilder{Host=u.Host,Port=u.IsDefaultPort?5432:u.Port,Database=Uri.UnescapeDataString(u.AbsolutePath.Trim('/')),Username=Uri.UnescapeDataString(p[0]),Password=p.Length>1?Uri.UnescapeDataString(p[1]):"",SslMode=SslMode.Require}.ConnectionString;
         }
     }
+    public async Task<(string Title,string Description)?> CourseInfoAsync(Guid courseId,CancellationToken ct=default) {
+        await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("SELECT title_ar,COALESCE(description,'') FROM courses WHERE id=@id AND published=true",db);
+        cmd.Parameters.AddWithValue("id",courseId);
+        await using var reader=await cmd.ExecuteReaderAsync(ct);
+        return await reader.ReadAsync(ct)?(reader.GetString(0),reader.GetString(1)):null;
+    }
     public async Task<bool> CanAccessStageAsync(Guid userId,Guid stageId,CancellationToken ct=default) {
         await using var conn=new NpgsqlConnection(ConnectionString);await conn.OpenAsync(ct);
         await using var cmd=new NpgsqlCommand("""
