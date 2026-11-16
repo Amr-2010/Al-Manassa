@@ -1,125 +1,84 @@
 @page "/dashboard/content"
-@rendermode InteractiveServer
 @attribute [Authorize(Roles="Admin")]
 @using Microsoft.AspNetCore.Authorization
 @using AlManassa.Web
 @inject ContentEditor Editor
 @inject CourseStore Store
-@inject CurriculumAiService Ai
-<PageTitle>مراجعة المحتوى | المنصة</PageTitle>
+<PageTitle>إدارة الكورسات والدروس | المنصة</PageTitle>
 <main dir="rtl" class="content-admin">
  <a href="/dashboard">← لوحة الإدارة</a>
- <h1>مركز إدارة المحتوى التعليمي</h1>
- <nav class="content-admin-nav" aria-label="أقسام لوحة إدارة المحتوى"><a href="#courses">الدورات</a><a href="#course-content">المراحل</a><a href="#lessons">الدروس</a><a href="#videos">الفيديوهات</a><a href="#ai-generator">إنشاء بالذكاء الاصطناعي</a><a href="/dashboard/subjects">إدارة الأقسام</a></nav>
- <div class="content-admin-stats"><div><strong>@courses.Count</strong><span>الدورات</span></div><div><strong>@stages.Count</strong><span>المراحل</span></div><div><strong>@lessons.Count</strong><span>الدروس</span></div><div><strong>@videos.Count</strong><span>الفيديوهات المقترحة</span></div></div>
- <p>التعديلات تحفظ مباشرة في PostgreSQL. تحقق من الفيديو وصلاحية تضمينه قبل الموافقة.</p>
- @if(message is not null){<p role="status">@message</p>}
-
- <section id="ai-generator" class="panel content-admin-panel">
- <h2>إنشاء منهج كامل بالذكاء الاصطناعي</h2>
- <p>يتم حفظ المنهج والأسئلة والامتحان النهائي في PostgreSQL كمقترح للمراجعة. لا ينشر تلقائيًا ولا يتم اختلاق روابط فيديو.</p>
- <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">
- <label>موضوع الدورة<input style="width:100%" @bind="aiTopic" placeholder="مثال: الأمن السيبراني" /></label>
- <label>المستوى<select style="width:100%" @bind="aiLevel"><option value="Beginner">مبتدئ</option><option value="Intermediate">متوسط</option><option value="Advanced">متقدم</option></select></label>
- <label>اللغة<select style="width:100%" @bind="aiLanguage"><option value="Arabic">العربية</option><option value="English">English</option></select></label>
- <label>عدد الأسابيع<input style="width:100%" type="number" min="1" max="24" @bind="aiWeeks" /></label>
- </div>
- <button disabled="@generating" @onclick="GenerateAi">@(generating?"جارٍ إعداد المنهج...":"إنشاء المنهج بالذكاء الاصطناعي")</button>
- @if(aiResult is not null){<p role="status">@aiResult</p>}
- </section>
+ <h1>إدارة الكورسات والمناهج</h1>
+ <nav class="content-admin-nav"><a href="/dashboard/subjects">1. الأقسام</a><a href="#courses">2. الكورسات</a><a href="#course-content">3. المراحل والدروس</a><a href="#ai-generator">4. الذكاء الاصطناعي</a></nav>
+ @if(!string.IsNullOrEmpty(Notice)){<p class="category-notice" role="status">@Notice</p>}
  <section id="courses" class="panel content-admin-panel">
- <h2>الأقسام ← الكورسات ← الدروس</h2><p>عدد الدروس غير محدود، مع اختبار قصير لكل درس (سؤالان)، ثم امتحان نهائي من 20 سؤالًا بعد اكتمال المنهج. يجب إدخال الأسئلة ومراجعتها قبل نشر الدورة.</p><p><a href="/dashboard/subjects">إضافة أو تعديل الأقسام التعليمية ←</a></p><p>إنشاء وتعديل ونشر وإلغاء نشر الدورات. الحذف ممنوع للدورات التي تحتوي مراحل أو تسجيلات حفاظًا على بيانات الطلاب.</p>
- <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
- <label>العنوان بالعربية<input style="width:100%" @bind="courseAr" /></label>
- <label>العنوان بالإنجليزية<input style="width:100%" @bind="courseEn" /></label>
- <label>القسم التعليمي<select style="width:100%" @bind="courseCategory"><option value="">اختر القسم</option>@foreach(var subject in subjects.Where(x=>x.Active)){<option value="@subject.Key">@subject.Name</option>}</select></label>
- <label>المدة بالأسابيع<input type="number" min="1" max="52" style="width:100%" @bind="courseWeeks" /></label>
- </div>
- <label>وصف الدورة<textarea style="width:100%;min-height:90px" @bind="courseDescription"></textarea></label>
- <label><input type="checkbox" @bind="coursePublished" /> منشورة</label>
- <button @onclick="SaveCourse">@(editingCourse.HasValue?"حفظ تعديل الدورة":"إضافة دورة")</button>
- <button @onclick="ResetCourse">دورة جديدة</button>
- <div class="content-table-scroll"><table class="content-courses-table"><thead><tr><th>الدورة</th><th>التخصص</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>
- @foreach(var c in courses){<tr><td>@c.TitleAr</td><td>@c.Category</td><td>@(c.Published?"منشورة":"مسودة")</td><td><a href="#course-content" @onclick="()=>OpenCourseContent(c.Id)">عرض المراحل والدروس</a><button @onclick="()=>EditCourse(c)">تعديل بيانات الدورة</button><button @onclick="()=>ToggleCourse(c)">@(c.Published?"إلغاء النشر":"نشر")</button><button @onclick="()=>DeleteCourse(c.Id)">حذف إن كانت فارغة</button></td></tr>}
- </tbody></table></div>
+  <h2>2. @(editing is null?"إضافة كورس جديد":"تعديل بيانات الكورس: "+editing.TitleAr)</h2>
+  <p>حدد القسم، ثم أدخل اسم الكورس ووصفه. لن يتم إنشاء دروس تلقائيًا.</p>
+  <form method="post" action="/api/admin/courses/save">
+   <AntiforgeryToken />
+   @if(editing is not null){<input type="hidden" name="id" value="@editing.Id" />}
+   <div class="category-form">
+    <label>العنوان بالعربية<input name="ar" value="@(editing?.TitleAr??"")" maxlength="250" required /></label>
+    <label>العنوان بالإنجليزية<input name="en" value="@(editing?.TitleEn??"")" maxlength="250" required /></label>
+    <label>القسم التعليمي<select name="category" required><option value="">اختر القسم</option>@foreach(var subject in subjects.Where(x=>x.Active)){<option value="@subject.Key" selected="@(editing?.Category==subject.Key)">@subject.Name</option>}</select></label>
+    <label>المدة بالأسابيع<input name="weeks" type="number" min="1" max="52" value="@(editing?.DurationWeeks??4)" required /></label>
+   </div>
+   <label>وصف الكورس<textarea name="description" maxlength="10000" rows="4">@(editing?.Description??"")</textarea></label>
+   <label><input type="checkbox" name="published" value="true" checked="@(editing?.Published??false)" /> منشور للطلاب</label>
+   <div><button type="submit">@(editing is null?"إضافة الكورس":"حفظ التعديلات")</button>
+   @if(editing is not null){<a class="outline" href="/dashboard/content#courses">إلغاء التعديل</a>}</div>
+  </form>
+  <h3>الكورسات المسجلة (@courses.Count)</h3>
+  <div class="content-table-scroll"><table class="content-courses-table"><thead><tr><th>الكورس</th><th>القسم</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>
+  @foreach(var c in courses){<tr><td>@c.TitleAr</td><td>@subjects.FirstOrDefault(x=>x.Key==c.Category)?.Name</td><td>@(c.Published?"منشور":"مسودة")</td><td><a href="@("/dashboard/content?edit="+c.Id+"#courses")">تعديل</a> | <a href="@("/dashboard/content?course="+c.Id+"#course-content")">المراحل والدروس</a> | <a href="@("/dashboard/content?delete="+c.Id+"#delete-course")">حذف</a></td></tr>}
+  </tbody></table></div>
+  @if(deleting is not null){<div class="category-notice" id="delete-course"><h3>تأكيد حذف: @deleting.TitleAr</h3><p>لا يمكن حذف كورس له مراحل أو تسجيلات طلاب حفاظًا على بياناتهم.</p><form method="post" action="/api/admin/courses/delete"><AntiforgeryToken /><input type="hidden" name="id" value="@deleting.Id" /><button type="submit">تأكيد حذف الكورس الفارغ</button> <a href="/dashboard/content#courses">إلغاء</a></form></div>}
  </section>
- <section class="panel content-admin-panel">
- <h2 id="course-content">محتوى الدورة: المراحل والدروس</h2><p>اختر دورة من القائمة أو اضغط «عرض المحتوى والمراجعة» أمام الدورة في الجدول. تظهر المراحل والدروس الموجودة بالفعل في PostgreSQL.</p>
- <label>اختر الدورة<select @bind="selectedCourse" @bind:after="CourseChanged"><option value="">اختر الدورة</option>@foreach(var c in courses){<option value="@c.Id">@c.TitleAr</option>}</select></label>
- @if(selectedCourse!=Guid.Empty){<div class="category-notice"><strong>الدورة المحددة: @courses.FirstOrDefault(x=>x.Id==selectedCourse)?.TitleAr</strong><p>المراحل: @stages.Count(x=>x.CourseId==selectedCourse) — الدروس: @visibleLessons.Count — مقترحات الفيديو: @visibleVideos.Count</p><p>أنشئ المراحل بالتسلسل، وأضف الدروس ومحتواها، ثم راجع الاختبارات قبل النشر. لا تُمنح شهادة إلا بعد استكمال متطلبات النجاح.</p></div>}
- <label>عنوان المرحلة الجديدة<input @bind="newStageTitle" /></label><button disabled="@(selectedCourse==Guid.Empty)" @onclick="AddStage">إضافة مرحلة إلى الدورة المحددة</button>
- @foreach(var st in stages.Where(x=>x.CourseId==selectedCourse)){
- <details style="margin:12px 0;padding:12px;border:1px solid #ccd6e5;border-radius:10px"><summary>@st.Position — @st.Title</summary>
- <input value="@st.Title" @onchange="e=>stageTitles[st.Id]=e.Value?.ToString()??string.Empty" /><button @onclick="()=>RenameStage(st.Id,st.Title)">تعديل اسم المرحلة</button>
- <p>إضافة درس إلى المرحلة (عدد الدروس مفتوح):</p><input placeholder="عنوان الدرس" @bind="newLessonTitle" /><textarea style="display:block;width:100%;min-height:90px" placeholder="المحتوى التعليمي" @bind="newLessonContent"></textarea><button @onclick="()=>AddLesson(st.Id)">إضافة الدرس</button>
- </details>
- }
+ <section id="course-content" class="panel content-admin-panel">
+  <h2>3. المراحل والدروس</h2>
+  <p>اختر كورسًا من الجدول بالأعلى. كل مرحلة تحتوي على عدد غير محدود من الدروس، ويكتب الناشر المحتوى بنفسه.</p>
+  @if(selected is null){<p class="category-notice">لم يتم تحديد كورس بعد. اضغط «المراحل والدروس» أمام الكورس المطلوب.</p>}
+  else {
+   <h3>الكورس المحدد: @selected.TitleAr</h3>
+   <form method="post" action="/api/admin/stages/add"><AntiforgeryToken /><input type="hidden" name="course" value="@selected.Id" /><label>عنوان المرحلة الجديدة<input name="title" maxlength="250" required /></label><button type="submit">إضافة مرحلة</button></form>
+   @foreach(var st in stages.Where(x=>x.CourseId==selected.Id)){
+    <details open style="margin:12px 0;padding:14px;border:1px solid #ccd6e5;border-radius:10px">
+     <summary><strong>المرحلة @st.Position: @st.Title</strong></summary>
+     <form method="post" action="/api/admin/stages/rename"><AntiforgeryToken /><input type="hidden" name="id" value="@st.Id" /><input type="hidden" name="course" value="@selected.Id" /><label>اسم المرحلة<input name="title" value="@st.Title" maxlength="250" required /></label><button type="submit">حفظ اسم المرحلة</button></form>
+     <h4>إضافة درس للمرحلة</h4>
+     <form method="post" action="/api/admin/lessons/add"><AntiforgeryToken /><input type="hidden" name="stage" value="@st.Id" /><input type="hidden" name="course" value="@selected.Id" /><label>عنوان الدرس<input name="title" maxlength="250" required /></label><label>المنهج المكتوب<textarea name="content" maxlength="30000" rows="5" required></textarea></label><button type="submit">إضافة الدرس</button></form>
+     @foreach(var l in lessons.Where(x=>x.Stage==st.Title && x.Course==selected.TitleAr)){
+      <details style="padding:12px;margin:10px 0;border:1px solid #d6dbe5;border-radius:8px"><summary>@l.Title</summary>
+       <form method="post" action="/api/admin/lessons/save"><AntiforgeryToken /><input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="course" value="@selected.Id" /><label>عنوان الدرس<input name="title" value="@l.Title" required /></label><label>محتوى الدرس<textarea name="content" rows="6" required>@l.Content</textarea></label><label>رابط YouTube<input name="youtube" type="url" value="@(l.VideoProvider=="youtube"?"https://www.youtube.com/watch?v="+l.VideoReference:"")" placeholder="https://www.youtube.com/watch?v=..." /></label><button type="submit">حفظ الدرس والفيديو</button></form>
+       <form method="post" action="/api/admin/lessons/delete"><AntiforgeryToken /><input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="course" value="@selected.Id" /><button type="submit">حذف الدرس إذا لم يدرسه أي طالب</button></form>
+      </details>
+     }
+    </details>
+   }
+  }
  </section>
- @if(selectedCourse==Guid.Empty){<p class="content-admin-hint">اختر دورة أولًا لعرض دروسها ومراحلها، بدلًا من عرض محتوى جميع الدورات مختلطًا.</p>}
- <h2 id="lessons">الدروس (@visibleLessons.Count)</h2><p>هذه الدروس مرتبطة بالدورة المحددة. افتح أي درس لتعديل العنوان والمحتوى ثم احفظ.</p>
- @foreach(var lesson in visibleLessons){
- <details style="border:1px solid #d6dbe5;border-radius:12px;padding:16px;margin:12px 0">
-  <summary><strong>@lesson.Course</strong> / @lesson.Stage / @lesson.Title</summary>
-  <label>عنوان الدرس</label>
-  <input style="display:block;width:100%;padding:10px;margin:8px 0" value="@lesson.Title" @onchange="e => UpdateTitle(lesson.Id, e.Value?.ToString() ?? string.Empty)" />
-  <label>محتوى الدرس</label>
-  <textarea style="display:block;width:100%;min-height:160px;padding:10px;margin:8px 0" @onchange="e => UpdateBody(lesson.Id, e.Value?.ToString() ?? string.Empty)">@lesson.Content</textarea>
-  <label style="display:block;margin-top:12px">رابط فيديو YouTube للدرس (اختياري)</label>
-  <input style="display:block;width:100%;margin:8px 0" placeholder="https://www.youtube.com/watch?v=..." value="@(lesson.VideoProvider=="youtube" && lesson.VideoReference is not null ? "https://www.youtube.com/watch?v="+lesson.VideoReference : "")" @onchange="e=>youtubeLinks[lesson.Id]=e.Value?.ToString()??string.Empty" />
-  <button @onclick="()=>SaveLesson(lesson.Id)">حفظ المنهج ورابط الفيديو</button> <button @onclick="()=>DeleteLesson(lesson.Id)">حذف الدرس إذا لم يُستكمل</button>
- </details>
- }
- <h2 id="videos">مقترحات الفيديو (@visibleVideos.Count)</h2>
- @foreach(var video in visibleVideos){
- <div style="border:1px solid #d6dbe5;border-radius:12px;padding:16px;margin:12px 0">
- <strong>@video.Course / @video.Stage</strong><p>كلمات البحث: @video.Query</p>
- <p>الحالة: @video.Status</p>
- <a href="@VideoSearchUrl(video.Query)" target="_blank" rel="noopener noreferrer">البحث عن فيديو على YouTube</a>
- <label style="display:block;margin-top:12px">معرّف فيديو YouTube (11 حرفًا)</label>
- <input style="padding:10px;width:min(400px,100%)" value="@video.VideoId" @onchange="e => SetVideo(video.Id, e.Value?.ToString() ?? string.Empty)" />
- <button @onclick="()=>ReviewVideo(video.Id,true)">اعتماد وربط بالدرس الأول</button>
- <button @onclick="()=>ReviewVideo(video.Id,false)">رفض</button>
- </div>
- }
+ <section id="ai-generator" class="panel content-admin-panel">
+  <h2>4. إنشاء مسودة منهج بالذكاء الاصطناعي</h2>
+  <p>يُنشئ النظام مقترحًا للمراجعة في PostgreSQL، ولا ينشره تلقائيًا. يلزم إعداد OPENAI_API_KEY على الخادم.</p>
+  <form method="post" action="/api/admin/curriculum/generate"><AntiforgeryToken /><div class="category-form">
+   <label>موضوع الكورس<input name="topic" maxlength="250" placeholder="مثال: برمجة .NET" required /></label>
+   <label>المستوى<select name="level"><option value="Beginner">مبتدئ</option><option value="Intermediate">متوسط</option><option value="Advanced">متقدم</option></select></label>
+   <label>اللغة<select name="language"><option value="Arabic">العربية</option><option value="English">English</option></select></label>
+   <label>عدد الأسابيع<input name="weeks" type="number" min="1" max="24" value="8" required /></label>
+  </div><button type="submit">إنشاء مقترح المنهج</button></form>
+ </section>
 </main>
 @code {
- string aiTopic="",aiLevel="Beginner",aiLanguage="Arabic";int aiWeeks=8;bool generating;string? aiResult;
- async Task GenerateAi(){generating=true;aiResult=null;try{var id=await Ai.GenerateAsync(aiTopic,aiLevel,aiLanguage,aiWeeks);aiResult="تم حفظ مقترح المنهج والامتحان في قاعدة البيانات للمراجعة. رقم المقترح: "+id;}catch(Exception){aiResult="تعذر إنشاء المنهج. تحقق من إعداد OPENAI_API_KEY واتصال PostgreSQL ومن صحة المحتوى.";}finally{generating=false;}}
+ [SupplyParameterFromQuery(Name="edit")]public Guid? EditId{get;set;}
+ [SupplyParameterFromQuery(Name="course")]public Guid? CourseId{get;set;}
+ [SupplyParameterFromQuery(Name="delete")]public Guid? DeleteId{get;set;}
+ [SupplyParameterFromQuery(Name="notice")]public string? Notice{get;set;}
  List<ContentEditor.AdminCourse> courses=new();
  List<SubjectItem> subjects=new();
- void CourseChanged(){newStageTitle="";newLessonTitle="";newLessonContent="";}
  List<(Guid Id,Guid CourseId,string Title,int Position)> stages=new();
- Guid? editingCourse;Guid selectedCourse;string courseAr="",courseEn="",courseDescription="",courseCategory="",newStageTitle="",newLessonTitle="",newLessonContent="";int courseWeeks=4;bool coursePublished;
- Dictionary<Guid,string> stageTitles=new();
- void ResetCourse(){editingCourse=null;courseAr="";courseEn="";courseDescription="";courseCategory="";courseWeeks=4;coursePublished=false;}
- void EditCourse(ContentEditor.AdminCourse c){editingCourse=c.Id;courseAr=c.TitleAr;courseEn=c.TitleEn;courseDescription=c.Description;courseCategory=c.Category;courseWeeks=c.DurationWeeks;coursePublished=c.Published;}
- async Task SaveCourse(){try{await Editor.SaveCourseAsync(editingCourse,courseAr,courseEn,courseDescription,courseCategory,courseWeeks,coursePublished);message="تم حفظ الدورة";ResetCourse();await Reload();}catch(Exception){message="تعذر حفظ الدورة؛ راجع البيانات";}}
- async Task ToggleCourse(ContentEditor.AdminCourse c){try{await Editor.SaveCourseAsync(c.Id,c.TitleAr,c.TitleEn,c.Description,c.Category,c.DurationWeeks,!c.Published);message="تم تحديث حالة النشر";await Reload();}catch(Exception){message="تعذر تحديث النشر";}}
- async Task DeleteCourse(Guid id){try{await Editor.DeleteCourseAsync(id);message="تم حذف الدورة الفارغة";await Reload();}catch(Exception){message="لا يمكن حذف دورة بها مراحل أو تسجيلات؛ ألغِ نشرها بدلًا من ذلك";}}
- async Task AddStage(){try{await Editor.AddStageAsync(selectedCourse,newStageTitle);newStageTitle="";message="تمت إضافة المرحلة";await Reload();}catch(Exception){message="اختر دورة وعنوان مرحلة صحيحًا";}}
- async Task RenameStage(Guid id,string current){try{await Editor.RenameStageAsync(id,stageTitles.GetValueOrDefault(id,current));message="تم تحديث المرحلة";await Reload();}catch(Exception){message="تعذر تعديل المرحلة";}}
- async Task AddLesson(Guid id){try{await Editor.AddLessonAsync(id,newLessonTitle,newLessonContent);newLessonTitle="";newLessonContent="";message="تمت إضافة الدرس";await Reload();}catch(Exception){message="تعذر إضافة الدرس. تأكد من اختيار المرحلة، وإدخال العنوان والمنهج.";}}
- async Task DeleteLesson(Guid id){try{await Editor.DeleteLessonAsync(id);message="تم حذف الدرس";await Reload();}catch(Exception){message="تعذر حذف الدرس لأنه مكتمل لدى طالب أو مرتبط ببيانات أخرى";}}
  List<AdminLesson> lessons=new();
- List<AdminLesson> visibleLessons=>selectedCourse==Guid.Empty?new List<AdminLesson>():lessons.Where(l=>l.Course==courses.FirstOrDefault(c=>c.Id==selectedCourse)?.TitleAr).ToList();
- List<AdminVideo> visibleVideos=>selectedCourse==Guid.Empty?new List<AdminVideo>():videos.Where(v=>v.Course==courses.FirstOrDefault(c=>c.Id==selectedCourse)?.TitleAr).ToList();
- void OpenCourseContent(Guid id){selectedCourse=id;CourseChanged();message="تم اختيار الدورة. افتح قسم المراحل والدروس أدناه لمراجعة المحتوى الموجود وحفظ التعديلات.";}
-
- List<AdminVideo> videos=new();
- Dictionary<Guid,string> titles=new(),bodies=new(),videoIds=new(),youtubeLinks=new();
- string? message;
- protected override async Task OnInitializedAsync()=>await Reload();
- async Task Reload(){try{courses=await Editor.CoursesAsync();subjects=await Store.AllSubjectsAsync();stages=await Editor.StagesAsync();lessons=await Editor.LessonsAsync();videos=await Editor.VideosAsync();}catch(Exception){message="تعذر تحميل المحتوى من قاعدة البيانات";}}
- string VideoSearchUrl(string query) => "https://www.youtube.com/results?search_query=" + Uri.EscapeDataString(query);
- void UpdateTitle(Guid id,string s)=>titles[id]=s;
- void UpdateBody(Guid id,string s)=>bodies[id]=s;
- void SetVideo(Guid id,string s)=>videoIds[id]=s;
- async Task SaveLesson(Guid id){
-  try{var l=lessons.First(x=>x.Id==id);await Editor.SaveLessonAsync(id,titles.GetValueOrDefault(id,l.Title),bodies.GetValueOrDefault(id,l.Content));if(youtubeLinks.ContainsKey(id))await Editor.SetLessonYoutubeAsync(id,youtubeLinks[id]);message="تم حفظ الدرس والفيديو";await Reload();}
-  catch(Exception){message="فشل حفظ الدرس؛ راجع العنوان والمحتوى والاتصال";}
- }
- async Task ReviewVideo(Guid id,bool approve){
-  try{var v=videos.First(x=>x.Id==id);await Editor.ReviewVideoAsync(id,videoIds.GetValueOrDefault(id,v.VideoId??""),approve);message=approve?"تم اعتماد الفيديو وربطه بالدرس":"تم رفض الاقتراح";await Reload();}
-  catch(Exception){message="تعذر اعتماد الفيديو. تأكد من معرف الفيديو والاتصال.";}
+ ContentEditor.AdminCourse? editing,selected,deleting;
+ protected override async Task OnParametersSetAsync(){
+  try{courses=await Editor.CoursesAsync();subjects=await Store.AllSubjectsAsync();stages=await Editor.StagesAsync();lessons=await Editor.LessonsAsync();editing=courses.FirstOrDefault(x=>x.Id==EditId);selected=courses.FirstOrDefault(x=>x.Id==CourseId);deleting=courses.FirstOrDefault(x=>x.Id==DeleteId);}
+  catch(Exception){Notice="تعذر تحميل البيانات من PostgreSQL";}
  }
 }
