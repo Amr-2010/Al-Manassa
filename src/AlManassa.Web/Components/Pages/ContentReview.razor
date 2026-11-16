@@ -15,9 +15,9 @@
  <details style="border:1px solid #d6dbe5;border-radius:12px;padding:16px;margin:12px 0">
   <summary><strong>@lesson.Course</strong> / @lesson.Stage / @lesson.Title</summary>
   <label>عنوان الدرس</label>
-  <input style="display:block;width:100%;padding:10px;margin:8px 0" value="@lesson.Title" @onchange="e=>UpdateTitle(lesson.Id,e.Value?.ToString()??"")" />
+  <input style="display:block;width:100%;padding:10px;margin:8px 0" value="@lesson.Title" @onchange="e => UpdateTitle(lesson.Id, e.Value?.ToString() ?? string.Empty)" />
   <label>محتوى الدرس</label>
-  <textarea style="display:block;width:100%;min-height:160px;padding:10px;margin:8px 0" @onchange="e=>UpdateBody(lesson.Id,e.Value?.ToString()??"")">@lesson.Content</textarea>
+  <textarea style="display:block;width:100%;min-height:160px;padding:10px;margin:8px 0" @onchange="e => UpdateBody(lesson.Id, e.Value?.ToString() ?? string.Empty)">@lesson.Content</textarea>
   <button @onclick="()=>SaveLesson(lesson.Id)">حفظ التعديلات</button>
  </details>
  }
@@ -26,9 +26,9 @@
  <div style="border:1px solid #d6dbe5;border-radius:12px;padding:16px;margin:12px 0">
  <strong>@video.Course / @video.Stage</strong><p>كلمات البحث: @video.Query</p>
  <p>الحالة: @video.Status</p>
- <a href="@("https://www.youtube.com/results?search_query="+Uri.EscapeDataString(video.Query))" target="_blank" rel="noopener noreferrer">البحث عن فيديو على YouTube</a>
+ <a href="@VideoSearchUrl(video.Query)" target="_blank" rel="noopener noreferrer">البحث عن فيديو على YouTube</a>
  <label style="display:block;margin-top:12px">معرّف فيديو YouTube (11 حرفًا)</label>
- <input style="padding:10px;width:min(400px,100%)" value="@video.VideoId" @onchange="e=>SetVideo(video.Id,e.Value?.ToString()??"")" />
+ <input style="padding:10px;width:min(400px,100%)" value="@video.VideoId" @onchange="e => SetVideo(video.Id, e.Value?.ToString() ?? string.Empty)" />
  <button @onclick="()=>ReviewVideo(video.Id,true)">اعتماد وربط بالدرس الأول</button>
  <button @onclick="()=>ReviewVideo(video.Id,false)">رفض</button>
  </div>
@@ -41,6 +41,7 @@
  string? message;
  protected override async Task OnInitializedAsync()=>await Reload();
  async Task Reload(){try{lessons=await Editor.LessonsAsync();videos=await Editor.VideosAsync();}catch(Exception){message="تعذر تحميل المحتوى من قاعدة البيانات";}}
+ string VideoSearchUrl(string query) => "https://www.youtube.com/results?search_query=" + Uri.EscapeDataString(query);
  void UpdateTitle(Guid id,string s)=>titles[id]=s;
  void UpdateBody(Guid id,string s)=>bodies[id]=s;
  void SetVideo(Guid id,string s)=>videoIds[id]=s;
