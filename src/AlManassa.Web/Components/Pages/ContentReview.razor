@@ -8,7 +8,6 @@
 <main dir="rtl" class="content-admin">
  <a href="/dashboard">← لوحة الإدارة</a>
  <h1>إدارة الكورسات والمناهج</h1>
- <nav class="content-admin-nav"><a href="/dashboard/subjects">1. الأقسام</a><a href="#courses">2. الكورسات</a><a href="#course-content">3. الدروس</a><a href="#ai-generator">4. الذكاء الاصطناعي</a></nav>
  @if(!string.IsNullOrEmpty(Notice)){<p class="category-notice" role="status">@Notice</p>}
  <section id="courses" class="panel content-admin-panel">
   <h2>2. @(editing is null?"إضافة كورس جديد":"تعديل بيانات الكورس: "+editing.TitleAr)</h2>
