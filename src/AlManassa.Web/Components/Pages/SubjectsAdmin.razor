@@ -1,5 +1,4 @@
 @page "/dashboard/subjects"
-@rendermode InteractiveServer
 @attribute [Authorize(Roles="Admin")]
 @using Microsoft.AspNetCore.Authorization
 @using AlManassa.Web
@@ -8,39 +7,71 @@
 <main dir="rtl" class="category-admin">
  <a href="/dashboard">← لوحة الإدارة</a>
  <h1>إدارة الأقسام والتصنيفات</h1>
- <p>إضافة وتعديل وحذف الأقسام. تُحفظ التغييرات في PostgreSQL وتظهر في الصفحة الرئيسية.</p>
- @if(message is not null){<p role="status" class="category-notice">@message</p>}
+ <p>أضف الأقسام وعدّل بياناتها أو احذفها. تحفظ العمليات مباشرة في PostgreSQL.</p>
+ @if(!string.IsNullOrWhiteSpace(notice)){<p role="status" class="category-notice">@notice</p>}
  <section id="category-editor" class="panel category-editor">
-  <h2>@(editing?"تعديل القسم":"إضافة قسم جديد")</h2>
-  <div class="category-form">
-   <label>معرّف القسم (بالإنجليزية)<input @bind="slug" disabled="@editing" maxlength="100" placeholder="Marketing" /></label>
-   <label>اسم القسم بالعربية<input @bind="name" maxlength="200" placeholder="التسويق الرقمي" /></label>
-   <label>رمز القسم<input @bind="icon" maxlength="20" placeholder="◆" /></label>
-   <label>وصف القسم<textarea @bind="description" maxlength="3000" rows="4" placeholder="اكتب وصف القسم ومجالاته التعليمية"></textarea></label>
-  </div>
-  <button type="button" @onclick="Save">@(editing?"حفظ التعديلات":"إضافة القسم")</button>
-  @if(editing){<button type="button" @onclick="Reset">إلغاء التعديل</button>}
+  <h2>@(current is null?"إضافة قسم جديد":"تعديل القسم: "+current.Name)</h2>
+  <form method="post" action="/api/admin/subjects/save">
+   <AntiforgeryToken />
+   <div class="category-form">
+    <label>معرّف القسم (بالإنجليزية)
+      <input name="slug" value="@(current?.Key??"")" maxlength="100" required readonly="@(current is not null)" placeholder="Marketing" />
+    </label>
+    <label>اسم القسم بالعربية
+      <input name="name" value="@(current?.Name??"")" maxlength="200" required placeholder="التسويق الرقمي" />
+    </label>
+    <label>رمز القسم
+      <input name="icon" value="@(current?.Icon??"◆")" maxlength="20" required placeholder="◆" />
+    </label>
+    <label>وصف القسم
+      <textarea name="description" maxlength="3000" rows="4" placeholder="اكتب وصف القسم ومجالاته التعليمية">@(current?.Description??"")</textarea>
+    </label>
+   </div>
+   <button type="submit">@(current is null?"إضافة القسم":"حفظ التعديلات")</button>
+   @if(current is not null){<a class="outline" href="/dashboard/subjects">إلغاء التعديل</a>}
+  </form>
  </section>
  <section class="panel">
   <h2>الأقسام المسجلة (@subjects.Count)</h2>
   <div class="admin-category-grid">
    @foreach(var subject in subjects){
-    <article><span class="admin-category-icon">@subject.Icon</span><h3>@subject.Name</h3><small>@subject.Key — @(subject.Active?"ظاهر":"مخفي")</small><p>@subject.Description</p>
-     <div class="category-actions"><a class="category-edit-link" href="#category-editor" @onclick="()=>Edit(subject)">تعديل</a><button type="button" @onclick="()=>AskDelete(subject.Key)">@(subject.Active?"حذف":"محذوف من العرض")</button></div>
+    <article><span class="admin-category-icon">@subject.Icon</span><h3>@subject.Name</h3>
+     <small>@subject.Key — @(subject.Active?"ظاهر":"مخفي")</small>
+     <p>@subject.Description</p>
+     <div class="category-actions">
+      <a class="category-edit-link" href="@("/dashboard/subjects?edit="+Uri.EscapeDataString(subject.Key)+"#category-editor")">تعديل</a>
+      <a class="category-edit-link" href="@("/dashboard/subjects?delete="+Uri.EscapeDataString(subject.Key)+"#delete-confirmation")">حذف</a>
+     </div>
     </article>
    }
   </div>
-  @if(pendingDelete is not null){<div class="category-notice"><strong>تأكيد حذف القسم: @pendingDelete</strong><p>إذا كان مرتبطًا بدورات، سيتم إخفاؤه من قائمة الأقسام مع الحفاظ على بيانات الدورات والطلاب.</p><button type="button" @onclick="ConfirmDelete">تأكيد الحذف</button> <button type="button" @onclick="()=>pendingDelete=null">إلغاء</button></div>}
+  @if(deleteTarget is not null){
+   <div class="category-notice" id="delete-confirmation">
+    <strong>تأكيد حذف القسم: @deleteTarget.Name</strong>
+    <p>إذا كان القسم مرتبطًا بكورسات، سيتم إخفاؤه مع الاحتفاظ ببيانات الطلاب والكورسات.</p>
+    <form method="post" action="/api/admin/subjects/delete">
+     <AntiforgeryToken />
+     <input type="hidden" name="slug" value="@deleteTarget.Key" />
+     <button type="submit">تأكيد الحذف</button>
+     <a href="/dashboard/subjects">إلغاء</a>
+    </form>
+   </div>
+  }
  </section>
 </main>
 @code {
+ [SupplyParameterFromQuery(Name="edit")] public string? EditKey {get;set;}
+ [SupplyParameterFromQuery(Name="delete")] public string? DeleteKey {get;set;}
+ [SupplyParameterFromQuery(Name="notice")] public string? Notice {get;set;}
  List<SubjectItem> subjects=new();
- string slug="",name="",icon="◆",description="";bool editing;string? message;string? pendingDelete;
- protected override async Task OnInitializedAsync()=>await Reload();
- async Task Reload(){try{subjects=await Store.AllSubjectsAsync();}catch(Exception){message="تعذر تحميل الأقسام من PostgreSQL";}}
- void Edit(SubjectItem s){slug=s.Key;name=s.Name;icon=s.Icon;description=s.Description;editing=true;message="أنت الآن تعدّل القسم: "+s.Name;}
- void Reset(){slug="";name="";icon="◆";description="";editing=false;}
- async Task Save(){try{await Store.SaveSubjectAsync(slug,name,icon,description);message="تم حفظ القسم في قاعدة البيانات";Reset();await Reload();}catch(Exception ex){message="تعذر الحفظ: "+ex.Message;}}
- void AskDelete(string key){pendingDelete=key;message="يرجى تأكيد الحذف أسفل قائمة الأقسام.";}
- async Task ConfirmDelete(){if(pendingDelete is null)return;try{message=await Store.DeleteSubjectAsync(pendingDelete);pendingDelete=null;await Reload();}catch(Exception ex){message="تعذر الحذف: "+ex.Message;}}
+ SubjectItem? current,deleteTarget;
+ string? notice;
+ protected override async Task OnParametersSetAsync(){
+  try {
+   subjects=await Store.AllSubjectsAsync();
+   current=subjects.FirstOrDefault(x=>x.Key==EditKey);
+   deleteTarget=subjects.FirstOrDefault(x=>x.Key==DeleteKey);
+   notice=Notice;
+  }catch(Exception){notice="تعذر تحميل الأقسام من قاعدة البيانات";}
+ }
 }
