@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using AlManassa.Web
 @inject ContentEditor Editor
+@inject CourseStore Store
 @inject CurriculumAiService Ai
 <PageTitle>مراجعة المحتوى | المنصة</PageTitle>
 <main dir="rtl" style="max-width:1150px;margin:32px auto;padding:20px">
@@ -25,11 +26,11 @@
  @if(aiResult is not null){<p role="status">@aiResult</p>}
  </section>
  <section class="panel" style="padding:24px;margin:24px 0">
- <h2>إدارة الدورات بالكامل</h2><p>إنشاء وتعديل ونشر وإلغاء نشر الدورات. الحذف ممنوع للدورات التي تحتوي مراحل أو تسجيلات حفاظًا على بيانات الطلاب.</p>
+ <h2>إدارة الدورات بالكامل</h2><p><a href="/dashboard/subjects">إضافة أو تعديل الأقسام التعليمية ←</a></p><p>إنشاء وتعديل ونشر وإلغاء نشر الدورات. الحذف ممنوع للدورات التي تحتوي مراحل أو تسجيلات حفاظًا على بيانات الطلاب.</p>
  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
  <label>العنوان بالعربية<input style="width:100%" @bind="courseAr" /></label>
  <label>العنوان بالإنجليزية<input style="width:100%" @bind="courseEn" /></label>
- <label>التخصص<input style="width:100%" @bind="courseCategory" /></label>
+ <label>القسم التعليمي<select style="width:100%" @bind="courseCategory"><option value="">اختر القسم</option>@foreach(var subject in subjects.Where(x=>x.Active)){<option value="@subject.Key">@subject.Name</option>}</select></label>
  <label>المدة بالأسابيع<input type="number" min="1" max="52" style="width:100%" @bind="courseWeeks" /></label>
  </div>
  <label>وصف الدورة<textarea style="width:100%;min-height:90px" @bind="courseDescription"></textarea></label>
@@ -37,13 +38,14 @@
  <button @onclick="SaveCourse">@(editingCourse.HasValue?"حفظ تعديل الدورة":"إضافة دورة")</button>
  <button @onclick="ResetCourse">دورة جديدة</button>
  <table style="width:100%;margin-top:18px"><thead><tr><th>الدورة</th><th>التخصص</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>
- @foreach(var c in courses){<tr><td>@c.TitleAr</td><td>@c.Category</td><td>@(c.Published?"منشورة":"مسودة")</td><td><button @onclick="()=>OpenCourseContent(c.Id)">عرض المحتوى والمراجعة</button><button @onclick="()=>EditCourse(c)">تعديل بيانات الدورة</button><button @onclick="()=>ToggleCourse(c)">@(c.Published?"إلغاء النشر":"نشر")</button><button @onclick="()=>DeleteCourse(c.Id)">حذف إن كانت فارغة</button></td></tr>}
+ @foreach(var c in courses){<tr><td>@c.TitleAr</td><td>@c.Category</td><td>@(c.Published?"منشورة":"مسودة")</td><td><a href="#course-content" @onclick="()=>OpenCourseContent(c.Id)">عرض المراحل والدروس</a><button @onclick="()=>EditCourse(c)">تعديل بيانات الدورة</button><button @onclick="()=>ToggleCourse(c)">@(c.Published?"إلغاء النشر":"نشر")</button><button @onclick="()=>DeleteCourse(c.Id)">حذف إن كانت فارغة</button></td></tr>}
  </tbody></table>
  </section>
  <section class="panel" style="padding:24px;margin:24px 0">
  <h2 id="course-content">محتوى الدورة: المراحل والدروس</h2><p>اختر دورة من القائمة أو اضغط «عرض المحتوى والمراجعة» أمام الدورة في الجدول. تظهر المراحل والدروس الموجودة بالفعل في PostgreSQL.</p>
- <label>اختر الدورة<select @bind="selectedCourse"><option value="">اختر الدورة</option>@foreach(var c in courses){<option value="@c.Id">@c.TitleAr</option>}</select></label>
- <label>عنوان المرحلة الجديدة<input @bind="newStageTitle" /></label><button @onclick="AddStage">إضافة مرحلة</button>
+ <label>اختر الدورة<select @bind="selectedCourse" @bind:after="CourseChanged"><option value="">اختر الدورة</option>@foreach(var c in courses){<option value="@c.Id">@c.TitleAr</option>}</select></label>
+ @if(selectedCourse!=Guid.Empty){<div class="category-notice"><strong>الدورة المحددة: @courses.FirstOrDefault(x=>x.Id==selectedCourse)?.TitleAr</strong><p>المراحل: @stages.Count(x=>x.CourseId==selectedCourse) — الدروس: @visibleLessons.Count — مقترحات الفيديو: @visibleVideos.Count</p><p>أنشئ المراحل بالتسلسل، وأضف الدروس ومحتواها، ثم راجع الاختبارات قبل النشر. لا تُمنح شهادة إلا بعد استكمال متطلبات النجاح.</p></div>}
+ <label>عنوان المرحلة الجديدة<input @bind="newStageTitle" /></label><button disabled="@(selectedCourse==Guid.Empty)" @onclick="AddStage">إضافة مرحلة إلى الدورة المحددة</button>
  @foreach(var st in stages.Where(x=>x.CourseId==selectedCourse)){
  <details style="margin:12px 0;padding:12px;border:1px solid #ccd6e5;border-radius:10px"><summary>@st.Position — @st.Title</summary>
  <input value="@st.Title" @onchange="e=>stageTitles[st.Id]=e.Value?.ToString()??string.Empty" /><button @onclick="()=>RenameStage(st.Id,st.Title)">تعديل اسم المرحلة</button>
@@ -79,10 +81,12 @@
  string aiTopic="",aiLevel="Beginner",aiLanguage="Arabic";int aiWeeks=8;bool generating;string? aiResult;
  async Task GenerateAi(){generating=true;aiResult=null;try{var id=await Ai.GenerateAsync(aiTopic,aiLevel,aiLanguage,aiWeeks);aiResult="تم حفظ مقترح المنهج والامتحان في قاعدة البيانات للمراجعة. رقم المقترح: "+id;}catch(Exception){aiResult="تعذر إنشاء المنهج. تحقق من إعداد OPENAI_API_KEY واتصال PostgreSQL ومن صحة المحتوى.";}finally{generating=false;}}
  List<ContentEditor.AdminCourse> courses=new();
+ List<SubjectItem> subjects=new();
+ void CourseChanged(){newStageTitle="";newLessonTitle="";newLessonContent="";}
  List<(Guid Id,Guid CourseId,string Title,int Position)> stages=new();
- Guid? editingCourse;Guid selectedCourse;string courseAr="",courseEn="",courseDescription="",courseCategory="General",newStageTitle="",newLessonTitle="",newLessonContent="";int courseWeeks=4;bool coursePublished;
+ Guid? editingCourse;Guid selectedCourse;string courseAr="",courseEn="",courseDescription="",courseCategory="",newStageTitle="",newLessonTitle="",newLessonContent="";int courseWeeks=4;bool coursePublished;
  Dictionary<Guid,string> stageTitles=new();
- void ResetCourse(){editingCourse=null;courseAr="";courseEn="";courseDescription="";courseCategory="General";courseWeeks=4;coursePublished=false;}
+ void ResetCourse(){editingCourse=null;courseAr="";courseEn="";courseDescription="";courseCategory="";courseWeeks=4;coursePublished=false;}
  void EditCourse(ContentEditor.AdminCourse c){editingCourse=c.Id;courseAr=c.TitleAr;courseEn=c.TitleEn;courseDescription=c.Description;courseCategory=c.Category;courseWeeks=c.DurationWeeks;coursePublished=c.Published;}
  async Task SaveCourse(){try{await Editor.SaveCourseAsync(editingCourse,courseAr,courseEn,courseDescription,courseCategory,courseWeeks,coursePublished);message="تم حفظ الدورة";ResetCourse();await Reload();}catch(Exception){message="تعذر حفظ الدورة؛ راجع البيانات";}}
  async Task ToggleCourse(ContentEditor.AdminCourse c){try{await Editor.SaveCourseAsync(c.Id,c.TitleAr,c.TitleEn,c.Description,c.Category,c.DurationWeeks,!c.Published);message="تم تحديث حالة النشر";await Reload();}catch(Exception){message="تعذر تحديث النشر";}}
@@ -94,13 +98,13 @@
  List<AdminLesson> lessons=new();
  List<AdminLesson> visibleLessons=>selectedCourse==Guid.Empty?lessons:lessons.Where(l=>l.Course==courses.FirstOrDefault(c=>c.Id==selectedCourse)?.TitleAr).ToList();
  List<AdminVideo> visibleVideos=>selectedCourse==Guid.Empty?videos:videos.Where(v=>v.Course==courses.FirstOrDefault(c=>c.Id==selectedCourse)?.TitleAr).ToList();
- void OpenCourseContent(Guid id){selectedCourse=id;message="تم اختيار الدورة. افتح قسم المراحل والدروس أدناه لمراجعة المحتوى الموجود وحفظ التعديلات.";}
+ void OpenCourseContent(Guid id){selectedCourse=id;CourseChanged();message="تم اختيار الدورة. افتح قسم المراحل والدروس أدناه لمراجعة المحتوى الموجود وحفظ التعديلات.";}
 
  List<AdminVideo> videos=new();
  Dictionary<Guid,string> titles=new(),bodies=new(),videoIds=new();
  string? message;
  protected override async Task OnInitializedAsync()=>await Reload();
- async Task Reload(){try{courses=await Editor.CoursesAsync();stages=await Editor.StagesAsync();lessons=await Editor.LessonsAsync();videos=await Editor.VideosAsync();}catch(Exception){message="تعذر تحميل المحتوى من قاعدة البيانات";}}
+ async Task Reload(){try{courses=await Editor.CoursesAsync();subjects=await Store.AllSubjectsAsync();stages=await Editor.StagesAsync();lessons=await Editor.LessonsAsync();videos=await Editor.VideosAsync();}catch(Exception){message="تعذر تحميل المحتوى من قاعدة البيانات";}}
  string VideoSearchUrl(string query) => "https://www.youtube.com/results?search_query=" + Uri.EscapeDataString(query);
  void UpdateTitle(Guid id,string s)=>titles[id]=s;
  void UpdateBody(Guid id,string s)=>bodies[id]=s;
