@@ -119,6 +119,67 @@ app.Use(async (ctx,next) => {
 });
 
 
+
+static string AdminContentRedirect(string message, Guid? course=null) =>
+ "/dashboard/content?notice="+Uri.EscapeDataString(message)+(course.HasValue?"&course="+course.Value:"")+(course.HasValue?"#course-content":"#courses");
+app.MapPost("/api/admin/courses/save",async (HttpContext ctx,IAntiforgery af,ContentEditor editor)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();
+ try{
+  Guid? id=Guid.TryParse(f["id"],out var cid)?cid:null;
+  if(!int.TryParse(f["weeks"],out var weeks))throw new ArgumentException("Invalid duration");
+  await editor.SaveCourseAsync(id,f["ar"].ToString(),f["en"].ToString(),f["description"].ToString(),f["category"].ToString(),weeks,f.ContainsKey("published"));
+  return Results.Redirect(AdminContentRedirect("تم حفظ الكورس بنجاح"));
+ }catch(Exception ex){return Results.Redirect(AdminContentRedirect("فشل حفظ الكورس: "+ex.Message));}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
+app.MapPost("/api/admin/courses/delete",async (HttpContext ctx,IAntiforgery af,ContentEditor editor)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();
+ try{await editor.DeleteCourseAsync(Guid.Parse(f["id"].ToString()));return Results.Redirect(AdminContentRedirect("تم حذف الكورس الفارغ"));}
+ catch(Exception ex){return Results.Redirect(AdminContentRedirect("تعذر حذف الكورس: "+ex.Message));}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
+app.MapPost("/api/admin/stages/add",async (HttpContext ctx,IAntiforgery af,ContentEditor editor)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();Guid? course=Guid.TryParse(f["course"],out var c)?c:null;
+ try{await editor.AddStageAsync(course??Guid.Empty,f["title"].ToString());return Results.Redirect(AdminContentRedirect("تمت إضافة المرحلة",course));}
+ catch(Exception ex){return Results.Redirect(AdminContentRedirect("فشل إضافة المرحلة: "+ex.Message,course));}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
+app.MapPost("/api/admin/stages/rename",async (HttpContext ctx,IAntiforgery af,ContentEditor editor)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();Guid? course=Guid.TryParse(f["course"],out var c)?c:null;
+ try{await editor.RenameStageAsync(Guid.Parse(f["id"].ToString()),f["title"].ToString());return Results.Redirect(AdminContentRedirect("تم تعديل المرحلة",course));}
+ catch(Exception ex){return Results.Redirect(AdminContentRedirect("فشل تعديل المرحلة: "+ex.Message,course));}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
+app.MapPost("/api/admin/lessons/add",async (HttpContext ctx,IAntiforgery af,ContentEditor editor)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();Guid? course=Guid.TryParse(f["course"],out var c)?c:null;
+ try{await editor.AddLessonAsync(Guid.Parse(f["stage"].ToString()),f["title"].ToString(),f["content"].ToString());return Results.Redirect(AdminContentRedirect("تمت إضافة الدرس",course));}
+ catch(Exception ex){return Results.Redirect(AdminContentRedirect("فشل إضافة الدرس: "+ex.Message,course));}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
+app.MapPost("/api/admin/lessons/save",async (HttpContext ctx,IAntiforgery af,ContentEditor editor)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();Guid? course=Guid.TryParse(f["course"],out var c)?c:null;
+ try{var id=Guid.Parse(f["id"].ToString());await editor.SaveLessonAsync(id,f["title"].ToString(),f["content"].ToString());await editor.SetLessonYoutubeAsync(id,f["youtube"].ToString());return Results.Redirect(AdminContentRedirect("تم حفظ الدرس والفيديو",course));}
+ catch(Exception ex){return Results.Redirect(AdminContentRedirect("فشل حفظ الدرس: "+ex.Message,course));}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
+app.MapPost("/api/admin/lessons/delete",async (HttpContext ctx,IAntiforgery af,ContentEditor editor)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();Guid? course=Guid.TryParse(f["course"],out var c)?c:null;
+ try{await editor.DeleteLessonAsync(Guid.Parse(f["id"].ToString()));return Results.Redirect(AdminContentRedirect("تم حذف الدرس",course));}
+ catch(Exception ex){return Results.Redirect(AdminContentRedirect("تعذر حذف الدرس: "+ex.Message,course));}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
+app.MapPost("/api/admin/curriculum/generate",async (HttpContext ctx,IAntiforgery af,CurriculumAiService ai)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();
+ try{
+  if(!int.TryParse(f["weeks"],out var weeks))throw new ArgumentException("Invalid duration");
+  var id=await ai.GenerateAsync(f["topic"].ToString(),f["level"].ToString(),f["language"].ToString(),weeks);
+  return Results.Redirect("/dashboard/content?notice="+Uri.EscapeDataString("تم إنشاء مسودة المنهج للمراجعة، رقم المقترح: "+id)+"#ai-generator");
+ }catch(Exception ex){
+  var message=ex is InvalidOperationException && ex.Message.Contains("OPENAI_API_KEY")?"مفتاح OPENAI_API_KEY غير مضاف على الخادم":ex.Message;
+  return Results.Redirect("/dashboard/content?notice="+Uri.EscapeDataString("فشل إنشاء المنهج: "+message)+"#ai-generator");
+ }
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
 app.MapPost("/api/admin/subjects/save", async (HttpContext ctx, IAntiforgery af, CourseStore store) => {
  if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
  var form=await ctx.Request.ReadFormAsync();
