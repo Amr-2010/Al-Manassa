@@ -195,3 +195,16 @@ body{background:#f7f9fc}
 .content-admin-hint{padding:17px;border:1px solid #f0d79b;background:#fff9eb;border-radius:12px;color:#6e511a}
 .content-admin [role=status]{padding:13px 17px;background:#edf6ff;border-right:4px solid #e9a52a;border-radius:8px}
 @media(max-width:760px){.content-admin{padding:14px}.content-admin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.content-admin .content-admin-panel{padding:17px}.content-admin-nav a{flex:1;text-align:center}}
+
+/* Curriculum editor */
+.lesson-rich-editor{border:1px solid #c9d5e8;border-radius:12px;overflow:hidden;background:#fff;margin:10px 0 18px;max-width:100%}
+.lesson-editor-toolbar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;background:#f2f5fa;padding:9px;border-bottom:1px solid #d7e0ed;direction:ltr;justify-content:flex-end}
+.lesson-editor-toolbar button{background:#fff!important;color:#13294d!important;border:1px solid #cbd7e7!important;border-radius:6px!important;padding:7px 12px!important;min-width:34px;cursor:pointer}
+.lesson-editor-toolbar button:hover{background:#e4ebf5!important}
+.lesson-editable{min-height:230px;padding:18px;outline:none;line-height:1.85;color:#14253e;background:white;overflow-wrap:anywhere;text-align:right;direction:rtl}
+.lesson-editable:empty:before{content:attr(data-placeholder);color:#99a6b6}
+.lesson-editable:focus{box-shadow:inset 0 0 0 2px #d4e5ff}
+.lesson-editable h3{font-size:1.25rem;margin:12px 0}
+.lesson-editable ul,.lesson-editable ol{padding-right:25px}
+.content-admin-panel form>label{display:block;margin:12px 0}
+.content-admin-panel input[type=file]{display:block;width:100%;max-width:540px;margin:10px 0;padding:12px;border:1px dashed #b7c7dd;border-radius:9px}
