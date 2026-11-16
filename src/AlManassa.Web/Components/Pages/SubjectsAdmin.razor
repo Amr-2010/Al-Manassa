@@ -10,7 +10,7 @@
  <h1>إدارة الأقسام والتصنيفات</h1>
  <p>جميع التغييرات تحفظ في قاعدة PostgreSQL وتظهر في الصفحة الرئيسية.</p>
  @if(message is not null){<p role="status" class="category-notice">@message</p>}
- <section class="panel category-editor">
+ <section id="category-editor" class="panel category-editor">
   <h2>@(editing?"تعديل القسم":"إضافة قسم جديد")</h2>
   <div class="category-form">
    <label>معرّف القسم (بالإنجليزية)<input @bind="slug" disabled="@editing" maxlength="100" placeholder="Marketing" /></label>
@@ -24,20 +24,22 @@
   <h2>الأقسام المسجلة (@subjects.Count)</h2>
   <div class="admin-category-grid">
    @foreach(var subject in subjects){
-    <article><span class="admin-category-icon">@subject.Icon</span><h3>@subject.Name</h3><small>@subject.Key</small>
-     <div class="category-actions"><button @onclick="()=>Edit(subject)">تعديل</button><button @onclick="()=>Delete(subject.Key)">حذف</button></div>
+    <article><span class="admin-category-icon">@subject.Icon</span><h3>@subject.Name</h3><small>@subject.Key — @(subject.Active?"ظاهر":"مخفي")</small>
+     <div class="category-actions"><a class="category-edit-link" href="#category-editor" @onclick="()=>Edit(subject)">تعديل</a><button type="button" @onclick="()=>AskDelete(subject.Key)">@(subject.Active?"حذف":"محذوف من العرض")</button></div>
     </article>
    }
   </div>
+  @if(pendingDelete is not null){<div class="category-notice"><strong>تأكيد حذف القسم: @pendingDelete</strong><p>إذا كان مرتبطًا بدورات، سيتم إخفاؤه من قائمة الأقسام مع الحفاظ على بيانات الدورات والطلاب.</p><button type="button" @onclick="ConfirmDelete">تأكيد الحذف</button> <button type="button" @onclick="()=>pendingDelete=null">إلغاء</button></div>}
  </section>
 </main>
 @code {
  List<SubjectItem> subjects=new();
- string slug="",name="",icon="◆";bool editing;string? message;
+ string slug="",name="",icon="◆";bool editing;string? message;string? pendingDelete;
  protected override async Task OnInitializedAsync()=>await Reload();
  async Task Reload(){try{subjects=await Store.AllSubjectsAsync();}catch(Exception){message="تعذر تحميل الأقسام من PostgreSQL";}}
  void Edit(SubjectItem s){slug=s.Key;name=s.Name;icon=s.Icon;editing=true;}
  void Reset(){slug="";name="";icon="◆";editing=false;}
  async Task Save(){try{await Store.SaveSubjectAsync(slug,name,icon);message="تم حفظ القسم في قاعدة البيانات";Reset();await Reload();}catch(Exception){message="تعذر الحفظ؛ تحقق من البيانات واتصال قاعدة البيانات";}}
- async Task Delete(string key){try{await Store.DeleteSubjectAsync(key);message="تم حذف القسم";await Reload();}catch(Exception){message="لا يمكن حذف قسم مرتبط بدورات. انقل الدورات أولًا ثم حاول مجددًا.";}}
+ void AskDelete(string key){pendingDelete=key;message="يرجى تأكيد الحذف أسفل قائمة الأقسام.";}
+ async Task ConfirmDelete(){if(pendingDelete is null)return;try{message=await Store.DeleteSubjectAsync(pendingDelete);pendingDelete=null;await Reload();}catch(Exception ex){message="تعذر الحذف: "+ex.Message;}}
 }
