@@ -10,6 +10,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app/publish .
 COPY database/003_sample_curricula.sql /app/database/003_sample_curricula.sql
+COPY database/004_demo_final_exams.sql /app/database/004_demo_final_exams.sql
 ENV ASPNETCORE_URLS=http://0.0.0.0:10000
 EXPOSE 10000
 ENTRYPOINT ["dotnet", "AlManassa.Web.dll"]
