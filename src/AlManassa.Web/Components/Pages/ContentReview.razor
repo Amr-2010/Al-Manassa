@@ -87,7 +87,7 @@
  </section>
  <section id="ai-generator" class="panel content-admin-panel">
   <h2>4. إنشاء مسودة منهج بالذكاء الاصطناعي</h2>
-  <p>يُنشئ النظام مقترحًا للمراجعة في PostgreSQL، ولا ينشره تلقائيًا. يلزم إعداد OPENAI_API_KEY على الخادم.</p>
+  <p>يُنشئ النظام مقترحًا للمراجعة في PostgreSQL، ولا ينشره تلقائيًا. يلزم إعداد GEMINI_API_KEY على الخادم.</p>
   <form method="post" action="/api/admin/curriculum/generate"><AntiforgeryToken /><div class="category-form">
    <label>موضوع الكورس<input name="topic" maxlength="250" placeholder="مثال: برمجة .NET" required /></label>
    <label>المستوى<select name="level"><option value="Beginner">مبتدئ</option><option value="Intermediate">متوسط</option><option value="Advanced">متقدم</option></select></label>
