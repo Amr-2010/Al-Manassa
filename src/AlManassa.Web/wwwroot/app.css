@@ -208,3 +208,20 @@ body{background:#f7f9fc}
 .lesson-editable ul,.lesson-editable ol{padding-right:25px}
 .content-admin-panel form>label{display:block;margin:12px 0}
 .content-admin-panel input[type=file]{display:block;width:100%;max-width:540px;margin:10px 0;padding:12px;border:1px dashed #b7c7dd;border-radius:9px}
+
+/* Course editor: aligned RTL form, no narrow floating textarea */
+.content-admin .course-editor-form{display:flex;flex-direction:column;gap:22px;margin-top:24px;width:100%;max-width:100%}
+.content-admin .course-editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 24px;width:100%;align-items:start}
+.content-admin .course-editor-form label{display:flex;flex-direction:column;gap:9px;margin:0;min-width:0;font-size:14px;font-weight:700;color:#173b69}
+.content-admin .course-editor-grid input,.content-admin .course-editor-grid select{display:block;width:100%;min-width:0;height:52px;padding:12px 16px;border:1px solid #cbd8e9;border-radius:10px;background:#fff;box-sizing:border-box}
+.content-admin .course-description-field{width:100%;display:flex;flex-direction:column;gap:10px}
+.content-admin .course-description-field textarea{display:block;width:100%;min-height:150px;resize:vertical;box-sizing:border-box;padding:16px 18px;line-height:1.9;border:1px solid #cbd8e9;border-radius:11px;background:#fff}
+.content-admin .course-editor-footer{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:20px;border-top:1px solid #e4eaf2}
+.content-admin .course-editor-footer .course-publish-toggle{display:inline-flex;flex-direction:row;align-items:center;gap:10px;cursor:pointer;font-size:14px}
+.content-admin .course-publish-toggle input{width:18px;height:18px;accent-color:#0c315d}
+.content-admin .course-editor-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.content-admin .course-editor-actions button{background:#071f42;color:#fff;padding:13px 26px;margin:0;min-height:46px;font-weight:700;border:0;border-radius:10px}
+.content-admin .course-editor-actions .outline{padding:12px 20px;border:1px solid #cbd8e9;border-radius:10px;text-decoration:none;color:#173b69}
+.content-admin .course-editor-form :is(input,select,textarea):focus{outline:2px solid #d9a12c;outline-offset:1px;border-color:#d9a12c}
+@media(min-width:1100px){.content-admin .course-editor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.content-admin .course-editor-grid{grid-template-columns:1fr;gap:15px}.content-admin .course-editor-footer{align-items:stretch;flex-direction:column}.content-admin .course-editor-actions{width:100%}.content-admin .course-editor-actions button{flex:1}}
