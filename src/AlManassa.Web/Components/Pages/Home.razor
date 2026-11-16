@@ -6,7 +6,7 @@
 <header class="site-header">
   <a class="brand" href="/"><img class="official-brand-logo" src="/almanassa-official-logo.webp" alt="المنصة Al-Manassa" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'" /><span class="brand-fallback" style="display:none">المنصة<small>Al-Manassa</small></span></a>
   <nav class="site-nav"><a href="#subjects">التخصصات</a><a href="#courses">الدورات</a><a href="#tracks">المسارات</a><a href="#certificates">الشهادات</a><a href="#about">عن المنصة</a></nav>
-  <div class="header-actions"><button @onclick="ToggleLanguage">@(english ? "العربية" : "English")</button><a class="dash-link" href="/dashboard">لوحة الإدارة</a></div>
+  <div class="header-actions"><button @onclick="ToggleLanguage">@(english ? "العربية" : "English")</button><AuthorizeView><Authorized><a class="dash-link" href="@(context.User.IsInRole("Admin") ? "/dashboard" : "/")">@(context.User.IsInRole("Admin") ? "لوحة الإدارة" : "دوراتي")</a></Authorized><NotAuthorized><a class="dash-link" href="/login">تسجيل الدخول</a><a class="dash-link" href="/register">إنشاء حساب</a></NotAuthorized></AuthorizeView></div>
 </header>
 <main dir="@(english ? "ltr" : "rtl")">
   <section class="hero hero-new"><div class="hero-content"><span class="eyebrow">AL-MANASSA · LEARN WITHOUT LIMITS</span><h1>@(english ? "Your next skill starts here." : "مستقبلك يبدأ بمهارة جديدة")</h1><p>@(english ? "Explore flexible courses designed for the skills of tomorrow." : "اكتشف دورات ومسارات تعليمية تساعدك على تطوير مهاراتك وتحقيق أهدافك.")</p><a href="#courses">@(english ? "Explore courses" : "استكشف الدورات")</a></div><div class="hero-art"><div class="art-orbit">▶</div><span>Learn · Grow · Achieve</span></div></section>
