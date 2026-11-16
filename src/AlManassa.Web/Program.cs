@@ -118,7 +118,7 @@ app.MapPost("/api/admin/lessons/{lessonId:guid}/assets",async (Guid lessonId,Htt
  if(!req.HasFormContentType)return Results.BadRequest();
  var form=await req.ReadFormAsync();var file=form.Files.GetFile("file");
  if(file is null||file.Length is <1 or >10485760)return Results.BadRequest("File must be 1-10 MB");
- await using var stream=file.OpenReadStream(10485760);using var ms=new MemoryStream();await stream.CopyToAsync(ms);
+ await using var stream=file.OpenReadStream();using var ms=new MemoryStream();await stream.CopyToAsync(ms);
  try {var id=await media.UploadAsync(lessonId,file.FileName,file.ContentType,ms.ToArray());return Results.Ok(new{id});}
  catch(ArgumentException){return Results.BadRequest("Unsupported file type");}
 }).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
