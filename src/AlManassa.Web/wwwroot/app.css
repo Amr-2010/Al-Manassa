@@ -29,3 +29,40 @@ body{background:#f8f8fc;color:#101342}
 .cta-section{background:#0b104c}
 .sidebar{background:#0b104c}
 @media(max-width:600px){.hero-new{border-radius:14px}}
+
+
+/* Al-Manassa approved gold-on-light-navy visual identity — global */
+:root{--brand-navy:#183b69;--brand-navy-light:#315b88;--brand-orange:#ffb829;--brand-gold:#ffd96d;--brand-deep:#0b264a;--brand-paper:#f5f8fc}
+body{background:var(--brand-paper);color:var(--brand-deep)}
+.site-header,header{background:#fff;border-bottom:2px solid var(--brand-gold);box-shadow:0 3px 20px #12365b13}
+.site-header .brand,.site-nav a,.dash-link,.outline{color:var(--brand-navy)}
+.site-header .brand small,.brand small,.eyebrow,.overline{color:#dd8b08!important}
+.brand-icon,.mark{background:linear-gradient(145deg,#ffe28a,#ffad13 58%,#f18900);border-color:var(--brand-navy);color:#fff}
+button,.panel button{background:var(--brand-navy);color:#fff}
+button:hover,.panel button:hover{background:var(--brand-navy-light)}
+.hero,.hero-new{background:linear-gradient(115deg,#17365e 0%,#28558a 60%,#456e9c 100%);color:#fff}
+.hero-new h1,.hero-new p,.hero h1,.hero p{color:#fff}
+.hero-new .eyebrow{color:var(--brand-gold)!important}
+.hero a,.hero-new a,.cta-section a{background:linear-gradient(105deg,#ffe17d,#ffad18);color:#142f53}
+.art-orbit{background:linear-gradient(145deg,#ffe07a,#ffab15);border-color:#ffedb5;box-shadow:18px 18px 0 #0b264a66}
+.hero-art span{color:#ffe7a1}
+.feature-strip div,.course-card,.stat,.panel,.course-message{background:#fff;border-color:#e0e8f2;box-shadow:0 8px 25px #193f7010}
+.feature-strip strong,.course-meta,.course-footer,.tag{color:#d48a09}
+.section-heading h2,.course-body h3,.dash-top h1,.panel h2,.stat strong{color:var(--brand-navy)}
+.course-cover{background:linear-gradient(135deg,#14345e,#315d90 70%,#ffbb35)}
+.course-cover span{color:var(--brand-gold)}
+.course-body p,.section-heading p,.panel p,.dash-top p{color:#5d718b}
+.cta-section{background:linear-gradient(120deg,#17365e,#345f8d)}
+.cta-section p{color:#e4edff}
+.dashboard{background:var(--brand-paper);color:var(--brand-deep)}
+.sidebar{background:linear-gradient(180deg,#15355f,#2b5484)}
+.sidebar nav a{color:#edf5ff}
+.sidebar nav a.selected,.sidebar nav a:hover{background:#ffffff23}
+.sidebar-brand small,.side-note{color:#ffdb81}
+.stat span,.stat small,.panel th{color:#6b7e97}
+.pill{background:#fff2d0;color:#8a5800}
+.empty,.suggestions article{background:#f1f5fb;color:#46617f}
+.form-grid input,.form-grid select{border-color:#cbd9e9;color:var(--brand-deep)}
+#almanassa-splash{background:linear-gradient(145deg,#17365e,#426e9d);color:var(--brand-gold)}
+#almanassa-splash .splash-symbol{background:linear-gradient(135deg,#ffe17a,#ff9f0d);color:var(--brand-navy);box-shadow:0 14px 38px #071d3966}
+#almanassa-splash .splash-spinner{border-color:#ffffff55;border-top-color:var(--brand-gold)}
