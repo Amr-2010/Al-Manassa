@@ -1,7 +1,9 @@
+using AlManassa.Web;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+builder.Services.AddScoped<CourseStore>();
 var app = builder.Build();
-app.MapGet("/health", () => Results.Ok(new { status = "ok", application = "Al-Manassa Web", mode = "demo" }));
+app.MapGet("/health", () => Results.Ok(new {status="ok",application="Al-Manassa Web"}));
 app.UseStaticFiles();
 app.UseAntiforgery();
 app.MapRazorComponents<AlManassa.Web.Components.App>().AddInteractiveServerRenderMode();
