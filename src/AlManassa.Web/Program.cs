@@ -121,7 +121,7 @@ app.MapPost("/api/admin/lessons/{lessonId:guid}/assets",async (Guid lessonId,Htt
  await using var stream=file.OpenReadStream(10485760);using var ms=new MemoryStream();await stream.CopyToAsync(ms);
  try {var id=await media.UploadAsync(lessonId,file.FileName,file.ContentType,ms.ToArray());return Results.Ok(new{id});}
  catch(ArgumentException){return Results.BadRequest("Unsupported file type");}
-}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"}).DisableAntiforgery();
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
 app.MapStaticAssets();
 app.UseAntiforgery();
 app.MapRazorComponents<AlManassa.Web.Components.App>().AddInteractiveServerRenderMode();
