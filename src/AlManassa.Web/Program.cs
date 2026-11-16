@@ -14,6 +14,7 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddScoped<CourseStore>();
 builder.Services.AddScoped<AuthStore>();
 builder.Services.AddScoped<LearningStore>();
+builder.Services.AddScoped<ContentEditor>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options => { options.LoginPath="/login"; options.Cookie.Name="AlManassa.Auth"; options.Cookie.HttpOnly=true; options.Cookie.SecurePolicy=CookieSecurePolicy.Always; options.Cookie.SameSite=SameSiteMode.Lax; options.ExpireTimeSpan=TimeSpan.FromHours(8); });
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
@@ -57,6 +58,7 @@ using (var scope=app.Services.CreateScope()) {
         await scope.ServiceProvider.GetRequiredService<AuthStore>().EnsureAsync();
         await scope.ServiceProvider.GetRequiredService<CourseStore>().EnsureDemoSchemaAsync();
         await scope.ServiceProvider.GetRequiredService<CourseStore>().SeedCurriculaAsync();
+        await scope.ServiceProvider.GetRequiredService<CourseStore>().SeedFinalExamsAsync();
         app.Logger.LogInformation("Al-Manassa database schema ready");
     } catch (Exception ex) {
         app.Logger.LogError("Al-Manassa database initialization failed ({ErrorType})",ex.GetType().Name);
