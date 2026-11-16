@@ -1,0 +1,94 @@
+@page "/learn/{CourseId:guid}"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using AlManassa.Web
+@inject LearningStore Learning
+@inject AuthenticationStateProvider Authentication
+<PageTitle>دورتي التعليمية | المنصة</PageTitle>
+<div class="learning-page" dir="rtl">
+ <header class="learning-header"><a href="/">المنصة · Al-Manassa</a><span>مساري التعليمي</span></header>
+ <main>
+ <h1>مراحل الدورة التعليمية</h1>
+ @if(!string.IsNullOrWhiteSpace(message)){<div class="learning-notice">@message</div>}
+ @if(!enrolled){<p>سجّل في الدورة للوصول إلى المحتوى.</p><button @onclick="Enroll">التحاق بالدورة</button>}
+ else {
+ <div class="learning-stages">
+ @foreach(var stage in stages){
+ <button class="learning-stage @(stage.Passed?"completed":"")" @onclick="()=>OpenStage(stage.Id)">
+  <strong>@stage.Position. @stage.Title</strong><span>@(stage.Passed?"✓ اجتازت":"عرض المرحلة")</span>
+ </button>
+ }
+ </div>
+ @if(activeStage is Guid sid){
+ <section class="learning-panel"><h2>الدروس</h2>
+ @foreach(var lesson in lessons){
+ <article class="learning-lesson"><h3>@lesson.Title</h3><p>@lesson.Content</p>
+ @if(lesson.VideoProvider=="youtube" && IsYoutubeId(lesson.VideoReference)){
+ <iframe class="learning-video" src="@($"https://www.youtube-nocookie.com/embed/{lesson.VideoReference}")" title="@lesson.Title" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+ }else if(lesson.VideoProvider=="hosted" && IsSafeHostedUrl(lesson.VideoReference)){
+ <video class="learning-video" controls controlsList="nodownload" preload="metadata" src="@lesson.VideoReference"></video>
+ }
+ <button disabled="@lesson.Completed" @onclick="()=>Complete(lesson.Id)">@(lesson.Completed?"تم إكمال الدرس":"تحديد الدرس مكتملًا")</button>
+ </article>
+ }
+ <h2>اختبار المرحلة</h2>
+ @if(questions.Count==0){<p>لم تُضف أسئلة لهذه المرحلة بعد. لا يمكن اجتيازها قبل إعداد الاختبار.</p>}
+ else { @foreach(var q in questions){<fieldset class="learning-question"><legend>@q.Prompt</legend>@foreach(var o in q.Options){<label><input type="radio" name="@q.Id" checked="@(answers.GetValueOrDefault(q.Id)==o.Id)" @onchange="()=>Choose(q.Id,o.Id)" /> @o.Label</label>}</fieldset>}
+ <button @onclick="SubmitStage" disabled="@(answers.Count!=questions.Count)">تسليم اختبار المرحلة</button> }
+ </section>
+ }
+ <section class="learning-panel"><h2>الامتحان النهائي</h2><p>20 سؤالًا بعد اجتياز جميع المراحل. النجاح من 70%.</p>
+ @if(finalQuestions.Count>0){
+ @foreach(var q in finalQuestions){<fieldset class="learning-question"><legend>@q.Prompt</legend>@foreach(var o in q.Options){<label><input type="radio" name="@q.Id" checked="@(finalAnswers.GetValueOrDefault(q.Id)==o.Id)" @onchange="()=>ChooseFinal(q.Id,o.Id)" /> @o.Label</label>}</fieldset>}
+ <button disabled="@(finalAnswers.Count!=20)" @onclick="SubmitFinal">تسليم الامتحان النهائي</button>
+ }else{<button @onclick="LoadFinal">فتح الامتحان النهائي</button>}
+ </section>
+ @if(certificate is not null){<section class="learning-certificate"><h2>شهادة إتمام الدورة</h2><p>@certificate.CourseTitle</p><p>@certificate.StudentEmail</p><p>تاريخ الإصدار: @certificate.IssuedAt.ToString("yyyy-MM-dd")</p><strong>رمز التحقق: @certificate.Code</strong><p><a href="@($"/verify/{certificate.Code}")">التحقق من الشهادة</a></p><button onclick="window.print()">طباعة / حفظ PDF</button></section>}
+ }
+ </main>
+</div>
+@code{
+ [Parameter] public Guid CourseId{get;set;}
+ Guid userId;bool enrolled;Guid? activeStage;string? message;
+ List<StageInfo> stages=new();List<LessonInfo> lessons=new();List<QuestionInfo> questions=new();List<QuestionInfo> finalQuestions=new();
+ Dictionary<Guid,Guid> answers=new();Dictionary<Guid,Guid> finalAnswers=new();CertificateInfo? certificate;
+ protected override async Task OnInitializedAsync(){
+   var state=await Authentication.GetAuthenticationStateAsync();
+   if(!Guid.TryParse(state.User.FindFirstValue(ClaimTypes.NameIdentifier),out userId)){message="يجب تسجيل الدخول أولًا";return;}
+   await Refresh();
+ }
+ async Task Refresh(){
+   stages=await Learning.StagesAsync(userId,CourseId);
+   enrolled=stages.Any(s=>s.Enrolled);
+   certificate=await Learning.CertificateAsync(userId,CourseId);
+ }
+ async Task Enroll(){enrolled=await Learning.EnrollAsync(userId,CourseId);await Refresh();if(!enrolled)message="الدورة غير متاحة للتسجيل";}
+ async Task OpenStage(Guid id){
+   if(!await Learning.CanAccessStageAsync(userId,id)){message="يجب إكمال المراحل السابقة واجتياز اختباراتها أولًا";return;}
+   activeStage=id;lessons=await Learning.LessonsAsync(userId,id);questions=await Learning.QuestionsAsync(userId,CourseId,id);
+   answers.Clear();message=null;
+ }
+ async Task Complete(Guid id){await Learning.CompleteLessonAsync(userId,id);if(activeStage is Guid sid)lessons=await Learning.LessonsAsync(userId,sid);}
+ void Choose(Guid q,Guid o)=>answers[q]=o;
+ void ChooseFinal(Guid q,Guid o)=>finalAnswers[q]=o;
+ async Task SubmitStage(){
+   if(activeStage is not Guid sid)return;
+   var result=await Learning.SubmitAsync(userId,CourseId,sid,answers);
+   message=$"{result.Message} — {result.Score}%";await Refresh();
+ }
+ async Task LoadFinal(){
+   if(stages.Count==0 || stages.Any(s=>!s.Passed)){message="أكمل جميع المراحل أولًا";return;}
+   var qs=await Learning.QuestionsAsync(userId,CourseId,null);
+   if(qs.Count!=20){message="الامتحان النهائي غير مكتمل (يلزم 20 سؤالًا)";return;}
+   finalQuestions=qs;finalAnswers.Clear();message=null;
+ }
+ async Task SubmitFinal(){
+   var result=await Learning.SubmitAsync(userId,CourseId,null,finalAnswers);
+   message=$"{result.Message} — {result.Score}%";await Refresh();
+ }
+ static bool IsYoutubeId(string? id)=>id is {Length:11} && id.All(c=>char.IsAsciiLetterOrDigit(c)||c=='_'||c=='-');
+ static bool IsSafeHostedUrl(string? url)=>Uri.TryCreate(url,UriKind.Absolute,out var uri)&&uri.Scheme==Uri.UriSchemeHttps;
+}
