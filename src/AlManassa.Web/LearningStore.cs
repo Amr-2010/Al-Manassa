@@ -16,6 +16,21 @@ public sealed class LearningStore(IConfiguration config) {
         await using var reader=await cmd.ExecuteReaderAsync(ct);
         return await reader.ReadAsync(ct)?(reader.GetString(0),reader.GetString(1)):null;
     }
+    public async Task<Guid?> ResumeStageAsync(Guid userId,Guid courseId,CancellationToken ct=default) {
+        await using var conn=new NpgsqlConnection(ConnectionString);await conn.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("""
+            SELECT s.id FROM course_stages s
+            JOIN course_enrollments e ON e.course_id=s.course_id AND e.user_id=@user
+            WHERE s.course_id=@course
+              AND (NOT EXISTS(SELECT 1 FROM assessment_attempts a WHERE a.stage_id=s.id AND a.user_id=@user AND a.passed)
+                OR EXISTS(SELECT 1 FROM stage_lessons l WHERE l.stage_id=s.id AND NOT EXISTS
+                  (SELECT 1 FROM lesson_completions lc WHERE lc.lesson_id=l.id AND lc.user_id=@user)))
+            ORDER BY s.position LIMIT 1
+            """,conn);
+        cmd.Parameters.AddWithValue("user",userId);cmd.Parameters.AddWithValue("course",courseId);
+        var value=await cmd.ExecuteScalarAsync(ct);
+        return value is Guid id?id:null;
+    }
     public async Task<bool> CanAccessStageAsync(Guid userId,Guid stageId,CancellationToken ct=default) {
         await using var conn=new NpgsqlConnection(ConnectionString);await conn.OpenAsync(ct);
         await using var cmd=new NpgsqlCommand("""
