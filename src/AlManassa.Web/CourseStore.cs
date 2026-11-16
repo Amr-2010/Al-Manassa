@@ -69,6 +69,13 @@ public sealed class CourseStore(IConfiguration config)
         await using var cmd=new NpgsqlCommand(sql,conn){CommandTimeout=90};
         await cmd.ExecuteNonQueryAsync(ct);
     }
+    public async Task SeedFinalExamsAsync(CancellationToken ct=default) {
+        var path=Path.Combine(AppContext.BaseDirectory,"database","004_demo_final_exams.sql");
+        if(!File.Exists(path))throw new FileNotFoundException("Final exam SQL missing",path);
+        await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand(await File.ReadAllTextAsync(path,ct),db){CommandTimeout=90};
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
     public async Task<List<(string Course,int Stages,int Lessons,int Questions,int Videos)>> ContentAuditAsync(CancellationToken ct=default) {
         await using var conn=new NpgsqlConnection(ConnectionString);
         await conn.OpenAsync(ct);
