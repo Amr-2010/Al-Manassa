@@ -2,19 +2,20 @@
 @rendermode InteractiveServer
 @using AlManassa.Web
 @inject CourseStore Store
+@inject AuthStore Users
 <PageTitle>لوحة الإدارة | المنصة</PageTitle>
 <div class="dashboard" dir="rtl">
-<aside class="sidebar"><div class="sidebar-brand">المنصة <small>Al-Manassa</small></div><nav><a href="/dashboard" class="selected">▦ نظرة عامة</a><a href="/">⌂ الموقع الرئيسي</a><a href="#courses">▤ إدارة الدورات</a><a href="#ai">✦ الذكاء الاصطناعي</a><a href="#reports">◫ التقارير</a></nav><div class="side-note">واجهة معاينة غير محمية. لا تدخل بيانات إدارية حقيقية قبل تفعيل تسجيل الدخول والصلاحيات.</div></aside>
+<aside class="sidebar"><div class="sidebar-brand">المنصة <small>Al-Manassa</small></div><nav><a href="/dashboard" class="selected">▦ نظرة عامة</a><a href="/">⌂ الموقع الرئيسي</a><a href="#courses">▤ إدارة الدورات</a><a href="#ai">✦ الذكاء الاصطناعي</a><a href="#reports">◫ التقارير</a></nav><div class="side-note">لوحة الإدارة متاحة لحسابات Admin فقط.</div></aside>
 <section class="dashboard-main"><div class="dash-top"><div><p class="overline">AL-MANASSA / MANAGEMENT</p><h1>لوحة التحكم الرئيسية</h1><p>بيانات مباشرة من PostgreSQL عند توفر الاتصال</p></div><a class="outline" href="/">عرض الموقع ←</a></div>
 @if (error) {<div class="course-message">تعذر الاتصال بقاعدة البيانات. تحقق من DATABASE_URL ومن تنفيذ database/002_courses_and_seed.sql.</div>}
-<div class="stat-grid"><div class="stat"><span>إجمالي الدورات</span><strong>@(error ? "—" : total.ToString())</strong><small>PostgreSQL</small></div><div class="stat"><span>الدورات المنشورة</span><strong>@(error ? "—" : published.ToString())</strong><small>PostgreSQL</small></div><div class="stat"><span>مقترحات المناهج</span><strong>@(error ? "—" : suggestions.ToString())</strong><small>محفوظة للمراجعة</small></div><div class="stat"><span>الطلاب</span><strong>—</strong><small>يتطلب نظام حسابات</small></div></div>
+<div class="stat-grid"><div class="stat"><span>إجمالي الدورات</span><strong>@(error ? "—" : total.ToString())</strong><small>PostgreSQL</small></div><div class="stat"><span>الدورات المنشورة</span><strong>@(error ? "—" : published.ToString())</strong><small>PostgreSQL</small></div><div class="stat"><span>مقترحات المناهج</span><strong>@(error ? "—" : suggestions.ToString())</strong><small>محفوظة للمراجعة</small></div><div class="stat"><span>الطلاب</span><strong>@(error ? "—" : students.ToString())</strong><small>حسابات PostgreSQL</small></div></div>
 <div class="dash-columns"><section class="panel" id="ai"><div class="panel-heading"><div><span class="tag">AI CURRICULUM</span><h2>مقترحات المناهج بالذكاء الاصطناعي</h2></div><span class="pill">OpenAI API</span></div><p>تمت إضافة واجهة خادم لتوليد مناهج حقيقية وحفظها في قاعدة البيانات بحالة PendingReview. إنشاء المقترحات من لوحة الإدارة سيُفعّل بعد إضافة تسجيل دخول آمن وصلاحيات Admin؛ لا نعرض مفتاح الخدمة في المتصفح.</p><div class="empty">المتطلبات: OPENAI_API_KEY و AI_ADMIN_TOKEN و DATABASE_URL. لا يتم نشر المناهج تلقائيًا.</div></section>
 <section class="panel" id="courses"><div class="panel-heading"><div><span class="tag">COURSE MANAGEMENT</span><h2>الدورات المنشورة</h2></div></div><table><thead><tr><th>الدورة</th><th>المدة</th><th>التصنيف</th></tr></thead><tbody>@foreach(var c in courses){<tr><td>@c.TitleAr</td><td>@c.DurationWeeks أسابيع</td><td>@c.Category</td></tr>}</tbody></table><div class="empty" id="reports">المدفوعات والاختبارات والطلاب ستظهر هنا بعد إنشاء الجداول ونظام المصادقة.</div></section></div>
 </section></div>
 @code {
- bool error; long total,published,suggestions; List<CourseItem> courses=new();
+ bool error; long total,published,suggestions,students; List<CourseItem> courses=new();
  protected override async Task OnInitializedAsync(){
-  try {var counts=await Store.CountsAsync();total=counts.Total;published=counts.Published;courses=await Store.PublishedAsync();suggestions=await Store.SuggestionCountAsync();}
+  try {var counts=await Store.CountsAsync();total=counts.Total;published=counts.Published;courses=await Store.PublishedAsync();suggestions=await Store.SuggestionCountAsync();students=await Users.CountStudentsAsync();}
   catch(Exception){error=true;}
  }
 }
