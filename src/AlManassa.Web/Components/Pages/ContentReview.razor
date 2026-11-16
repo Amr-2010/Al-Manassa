@@ -45,10 +45,45 @@
      <summary><strong>المرحلة @st.Position: @st.Title</strong></summary>
      <form method="post" action="/api/admin/stages/rename"><AntiforgeryToken /><input type="hidden" name="id" value="@st.Id" /><input type="hidden" name="course" value="@selected.Id" /><label>اسم المرحلة<input name="title" value="@st.Title" maxlength="250" required /></label><button type="submit">حفظ اسم المرحلة</button></form>
      <h4>إضافة درس للمرحلة</h4>
-     <form method="post" action="/api/admin/lessons/add"><AntiforgeryToken /><input type="hidden" name="stage" value="@st.Id" /><input type="hidden" name="course" value="@selected.Id" /><label>عنوان الدرس<input name="title" maxlength="250" required /></label><label>المنهج المكتوب<textarea name="content" maxlength="30000" rows="5" required></textarea></label><button type="submit">إضافة الدرس</button></form>
+     <form method="post" action="/api/admin/lessons/add"><AntiforgeryToken /><input type="hidden" name="stage" value="@st.Id" /><input type="hidden" name="course" value="@selected.Id" /><label>عنوان الدرس<input name="title" maxlength="250" required /></label><div class="lesson-rich-editor" data-lesson-editor>
+       <div class="lesson-editor-toolbar" role="toolbar" aria-label="تنسيق المنهج">
+        <button type="button" data-format="bold" title="عريض"><strong>B</strong></button>
+        <button type="button" data-format="italic" title="مائل"><em>I</em></button>
+        <button type="button" data-format="underline" title="تسطير"><u>U</u></button>
+        <button type="button" data-format="insertUnorderedList" title="قائمة نقطية">☷</button>
+        <button type="button" data-format="insertOrderedList" title="قائمة مرقمة">≡</button>
+        <button type="button" data-format="formatBlock" data-value="h3" title="عنوان">H3</button>
+        <button type="button" data-format="formatBlock" data-value="p" title="فقرة">¶</button>
+        <button type="button" data-format="undo" title="تراجع">↶</button>
+        <button type="button" data-format="redo" title="إعادة">↷</button>
+       </div>
+       <div class="lesson-editable" contenteditable="true" role="textbox" aria-multiline="true" aria-label="محتوى المنهج" data-placeholder="اكتب المنهج هنا ونسقه باستخدام الأدوات..."></div>
+       <textarea name="content" hidden></textarea>
+      </div><button type="submit">إضافة الدرس</button></form>
      @foreach(var l in lessons.Where(x=>x.Stage==st.Title && x.Course==selected.TitleAr)){
       <details style="padding:12px;margin:10px 0;border:1px solid #d6dbe5;border-radius:8px"><summary>@l.Title</summary>
-       <form method="post" action="/api/admin/lessons/save"><AntiforgeryToken /><input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="course" value="@selected.Id" /><label>عنوان الدرس<input name="title" value="@l.Title" required /></label><label>محتوى الدرس<textarea name="content" rows="6" required>@l.Content</textarea></label><label>رابط YouTube<input name="youtube" type="url" value="@(l.VideoProvider=="youtube"?"https://www.youtube.com/watch?v="+l.VideoReference:"")" placeholder="https://www.youtube.com/watch?v=..." /></label><button type="submit">حفظ الدرس والفيديو</button></form>
+       <form method="post" action="/api/admin/lessons/save"><AntiforgeryToken /><input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="course" value="@selected.Id" /><label>عنوان الدرس<input name="title" value="@l.Title" required /></label><div class="lesson-rich-editor" data-lesson-editor>
+       <div class="lesson-editor-toolbar" role="toolbar" aria-label="تنسيق المنهج">
+        <button type="button" data-format="bold" title="عريض"><strong>B</strong></button>
+        <button type="button" data-format="italic" title="مائل"><em>I</em></button>
+        <button type="button" data-format="underline" title="تسطير"><u>U</u></button>
+        <button type="button" data-format="insertUnorderedList" title="قائمة نقطية">☷</button>
+        <button type="button" data-format="insertOrderedList" title="قائمة مرقمة">≡</button>
+        <button type="button" data-format="formatBlock" data-value="h3" title="عنوان">H3</button>
+        <button type="button" data-format="formatBlock" data-value="p" title="فقرة">¶</button>
+        <button type="button" data-format="undo" title="تراجع">↶</button>
+        <button type="button" data-format="redo" title="إعادة">↷</button>
+       </div>
+       <div class="lesson-editable" contenteditable="true" role="textbox" aria-multiline="true" aria-label="محتوى المنهج" data-placeholder="اكتب المنهج هنا ونسقه باستخدام الأدوات...">@((MarkupString)ContentEditor.CleanLessonHtml(l.Content))</div>
+       <textarea name="content" hidden>@l.Content</textarea>
+      </div><label>رابط YouTube<input name="youtube" type="url" value="@(l.VideoProvider=="youtube"?"https://www.youtube.com/watch?v="+l.VideoReference:"")" placeholder="https://www.youtube.com/watch?v=..." /></label><button type="submit">حفظ الدرس والفيديو</button></form>
+       <form method="post" action="/api/admin/lessons/upload-video" enctype="multipart/form-data">
+        <AntiforgeryToken /><input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="course" value="@selected.Id" />
+        <label>رفع فيديو من الجهاز (MP4 أو WebM حتى 50 ميجابايت)<input type="file" name="video" accept="video/mp4,video/webm" required /></label>
+        <button type="submit">رفع الفيديو وحفظه</button>
+       </form>
+       @if(l.VideoProvider=="hosted"){<video controls preload="metadata" style="width:100%;max-width:720px" src="@("/api/lessons/"+l.Id+"/video")"></video>}
+       else if(l.VideoProvider=="youtube"){<p>فيديو YouTube مرتبط بالدرس: <a target="_blank" rel="noopener noreferrer" href="@("https://www.youtube.com/watch?v="+l.VideoReference)">فتح الفيديو</a></p>}
        <form method="post" action="/api/admin/lessons/delete"><AntiforgeryToken /><input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="course" value="@selected.Id" /><button type="submit">حذف الدرس إذا لم يدرسه أي طالب</button></form>
       </details>
      }
