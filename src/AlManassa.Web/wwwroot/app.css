@@ -161,3 +161,5 @@ body{background:#f7f9fc}
 .category-notice{padding:14px;background:#f0f5fb;border-radius:8px}
 @media(max-width:950px){.subject-grid{grid-template-columns:repeat(2,1fr)}.admin-category-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:650px){.hero-new{grid-template-columns:1fr}.hero-art{display:none}.subject-grid,.admin-category-grid,.category-form{grid-template-columns:1fr}.subject-tile{min-height:180px}}
+
+.category-edit-link{display:inline-flex;align-items:center;justify-content:center;background:#071f42;color:#fff;text-decoration:none;border-radius:10px;padding:11px 17px;font-weight:700}.category-edit-link:hover{background:#245486}.category-admin .category-editor:target{outline:3px solid #ffbf39;outline-offset:4px}.category-actions{flex-wrap:wrap}
