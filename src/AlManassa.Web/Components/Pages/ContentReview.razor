@@ -94,6 +94,15 @@
    <label>اللغة<select name="language"><option value="Arabic">العربية</option><option value="English">English</option></select></label>
    <label>عدد الأسابيع<input name="weeks" type="number" min="1" max="24" value="8" required /></label>
   </div><button type="submit">إنشاء مقترح المنهج</button></form>
+  <h3>المناهج المُنشأة للمراجعة</h3>
+  @if(suggestions.Count==0){<p>لا توجد مسودات محفوظة حتى الآن.</p>}
+  @foreach(var draft in suggestions){
+   <details class="panel" style="margin:12px 0;padding:14px">
+    <summary><strong>@draft.Topic</strong> — @draft.Status</summary>
+    <p>رقم المسودة: @draft.Id</p>
+    <pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:480px;overflow:auto;direction:ltr;text-align:left">@draft.Json</pre>
+   </details>
+  }
  </section>
 </main>
 @code {
@@ -103,11 +112,12 @@
  [SupplyParameterFromQuery(Name="notice")]public string? Notice{get;set;}
  List<ContentEditor.AdminCourse> courses=new();
  List<SubjectItem> subjects=new();
+ List<(Guid Id,string Topic,string Status,string Json)> suggestions=new();
  List<(Guid Id,Guid CourseId,string Title,int Position)> stages=new();
  List<AdminLesson> lessons=new();
  ContentEditor.AdminCourse? editing,selected,deleting;
  protected override async Task OnParametersSetAsync(){
-  try{courses=await Editor.CoursesAsync();subjects=await Store.AllSubjectsAsync();stages=await Editor.StagesAsync();lessons=await Editor.LessonsAsync();editing=courses.FirstOrDefault(x=>x.Id==EditId);selected=courses.FirstOrDefault(x=>x.Id==CourseId);deleting=courses.FirstOrDefault(x=>x.Id==DeleteId);}
+  try{courses=await Editor.CoursesAsync();subjects=await Store.AllSubjectsAsync();suggestions=await Store.LatestSuggestionsAsync();stages=await Editor.StagesAsync();lessons=await Editor.LessonsAsync();editing=courses.FirstOrDefault(x=>x.Id==EditId);selected=courses.FirstOrDefault(x=>x.Id==CourseId);deleting=courses.FirstOrDefault(x=>x.Id==DeleteId);}
   catch(Exception){Notice="تعذر تحميل البيانات من PostgreSQL";}
  }
 }
