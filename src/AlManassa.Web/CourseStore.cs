@@ -183,6 +183,13 @@ public sealed class CourseStore(IConfiguration config)
               UNIQUE(stage_id,position),
               CHECK(video_provider IS NULL OR video_provider IN ('youtube','hosted'))
             );
+            CREATE TABLE IF NOT EXISTS lesson_uploaded_videos (
+              lesson_id uuid PRIMARY KEY REFERENCES stage_lessons(id) ON DELETE CASCADE,
+              filename varchar(255) NOT NULL,
+              mime_type varchar(50) NOT NULL,
+              data bytea NOT NULL,
+              uploaded_at timestamptz NOT NULL DEFAULT now()
+            );
             CREATE TABLE IF NOT EXISTS course_questions (
               id uuid PRIMARY KEY, course_id uuid NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
               stage_id uuid REFERENCES course_stages(id) ON DELETE CASCADE,
