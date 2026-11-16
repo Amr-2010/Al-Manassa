@@ -7,13 +7,15 @@
 @inject CourseStore Store
 @inject CurriculumAiService Ai
 <PageTitle>مراجعة المحتوى | المنصة</PageTitle>
-<main dir="rtl" style="max-width:1150px;margin:32px auto;padding:20px">
+<main dir="rtl" class="content-admin">
  <a href="/dashboard">← لوحة الإدارة</a>
- <h1>مراجعة وتعديل المحتوى</h1>
+ <h1>مركز إدارة المحتوى التعليمي</h1>
+ <nav class="content-admin-nav" aria-label="أقسام لوحة إدارة المحتوى"><a href="#courses">الدورات</a><a href="#course-content">المراحل</a><a href="#lessons">الدروس</a><a href="#videos">الفيديوهات</a><a href="#ai-generator">إنشاء بالذكاء الاصطناعي</a><a href="/dashboard/subjects">إدارة الأقسام</a></nav>
+ <div class="content-admin-stats"><div><strong>@courses.Count</strong><span>الدورات</span></div><div><strong>@stages.Count</strong><span>المراحل</span></div><div><strong>@lessons.Count</strong><span>الدروس</span></div><div><strong>@videos.Count</strong><span>الفيديوهات المقترحة</span></div></div>
  <p>التعديلات تحفظ مباشرة في PostgreSQL. تحقق من الفيديو وصلاحية تضمينه قبل الموافقة.</p>
  @if(message is not null){<p role="status">@message</p>}
 
- <section class="panel" style="padding:24px;margin:24px 0">
+ <section id="ai-generator" class="panel content-admin-panel">
  <h2>إنشاء منهج كامل بالذكاء الاصطناعي</h2>
  <p>يتم حفظ المنهج والأسئلة والامتحان النهائي في PostgreSQL كمقترح للمراجعة. لا ينشر تلقائيًا ولا يتم اختلاق روابط فيديو.</p>
  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">
@@ -25,7 +27,7 @@
  <button disabled="@generating" @onclick="GenerateAi">@(generating?"جارٍ إعداد المنهج...":"إنشاء المنهج بالذكاء الاصطناعي")</button>
  @if(aiResult is not null){<p role="status">@aiResult</p>}
  </section>
- <section class="panel" style="padding:24px;margin:24px 0">
+ <section id="courses" class="panel content-admin-panel">
  <h2>إدارة الدورات بالكامل</h2><p><a href="/dashboard/subjects">إضافة أو تعديل الأقسام التعليمية ←</a></p><p>إنشاء وتعديل ونشر وإلغاء نشر الدورات. الحذف ممنوع للدورات التي تحتوي مراحل أو تسجيلات حفاظًا على بيانات الطلاب.</p>
  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
  <label>العنوان بالعربية<input style="width:100%" @bind="courseAr" /></label>
@@ -37,11 +39,11 @@
  <label><input type="checkbox" @bind="coursePublished" /> منشورة</label>
  <button @onclick="SaveCourse">@(editingCourse.HasValue?"حفظ تعديل الدورة":"إضافة دورة")</button>
  <button @onclick="ResetCourse">دورة جديدة</button>
- <table style="width:100%;margin-top:18px"><thead><tr><th>الدورة</th><th>التخصص</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>
+ <div class="content-table-scroll"><table class="content-courses-table"><thead><tr><th>الدورة</th><th>التخصص</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>
  @foreach(var c in courses){<tr><td>@c.TitleAr</td><td>@c.Category</td><td>@(c.Published?"منشورة":"مسودة")</td><td><a href="#course-content" @onclick="()=>OpenCourseContent(c.Id)">عرض المراحل والدروس</a><button @onclick="()=>EditCourse(c)">تعديل بيانات الدورة</button><button @onclick="()=>ToggleCourse(c)">@(c.Published?"إلغاء النشر":"نشر")</button><button @onclick="()=>DeleteCourse(c.Id)">حذف إن كانت فارغة</button></td></tr>}
- </tbody></table>
+ </tbody></table></div>
  </section>
- <section class="panel" style="padding:24px;margin:24px 0">
+ <section class="panel content-admin-panel">
  <h2 id="course-content">محتوى الدورة: المراحل والدروس</h2><p>اختر دورة من القائمة أو اضغط «عرض المحتوى والمراجعة» أمام الدورة في الجدول. تظهر المراحل والدروس الموجودة بالفعل في PostgreSQL.</p>
  <label>اختر الدورة<select @bind="selectedCourse" @bind:after="CourseChanged"><option value="">اختر الدورة</option>@foreach(var c in courses){<option value="@c.Id">@c.TitleAr</option>}</select></label>
  @if(selectedCourse!=Guid.Empty){<div class="category-notice"><strong>الدورة المحددة: @courses.FirstOrDefault(x=>x.Id==selectedCourse)?.TitleAr</strong><p>المراحل: @stages.Count(x=>x.CourseId==selectedCourse) — الدروس: @visibleLessons.Count — مقترحات الفيديو: @visibleVideos.Count</p><p>أنشئ المراحل بالتسلسل، وأضف الدروس ومحتواها، ثم راجع الاختبارات قبل النشر. لا تُمنح شهادة إلا بعد استكمال متطلبات النجاح.</p></div>}
@@ -53,7 +55,8 @@
  </details>
  }
  </section>
- <h2>الدروس (@visibleLessons.Count)</h2><p>هذه الدروس مرتبطة بالدورة المحددة. افتح أي درس لتعديل العنوان والمحتوى ثم احفظ.</p>
+ @if(selectedCourse==Guid.Empty){<p class="content-admin-hint">اختر دورة أولًا لعرض دروسها ومراحلها، بدلًا من عرض محتوى جميع الدورات مختلطًا.</p>}
+ <h2 id="lessons">الدروس (@visibleLessons.Count)</h2><p>هذه الدروس مرتبطة بالدورة المحددة. افتح أي درس لتعديل العنوان والمحتوى ثم احفظ.</p>
  @foreach(var lesson in visibleLessons){
  <details style="border:1px solid #d6dbe5;border-radius:12px;padding:16px;margin:12px 0">
   <summary><strong>@lesson.Course</strong> / @lesson.Stage / @lesson.Title</summary>
@@ -64,7 +67,7 @@
   <button @onclick="()=>SaveLesson(lesson.Id)">حفظ التعديلات</button> <button @onclick="()=>DeleteLesson(lesson.Id)">حذف الدرس إذا لم يُستكمل</button>
  </details>
  }
- <h2>مقترحات الفيديو (@visibleVideos.Count)</h2>
+ <h2 id="videos">مقترحات الفيديو (@visibleVideos.Count)</h2>
  @foreach(var video in visibleVideos){
  <div style="border:1px solid #d6dbe5;border-radius:12px;padding:16px;margin:12px 0">
  <strong>@video.Course / @video.Stage</strong><p>كلمات البحث: @video.Query</p>
@@ -96,8 +99,8 @@
  async Task AddLesson(Guid id){try{await Editor.AddLessonAsync(id,newLessonTitle,newLessonContent);newLessonTitle="";newLessonContent="";message="تمت إضافة الدرس";await Reload();}catch(Exception){message="تعذر إضافة الدرس";}}
  async Task DeleteLesson(Guid id){try{await Editor.DeleteLessonAsync(id);message="تم حذف الدرس";await Reload();}catch(Exception){message="تعذر حذف الدرس لأنه مكتمل لدى طالب أو مرتبط ببيانات أخرى";}}
  List<AdminLesson> lessons=new();
- List<AdminLesson> visibleLessons=>selectedCourse==Guid.Empty?lessons:lessons.Where(l=>l.Course==courses.FirstOrDefault(c=>c.Id==selectedCourse)?.TitleAr).ToList();
- List<AdminVideo> visibleVideos=>selectedCourse==Guid.Empty?videos:videos.Where(v=>v.Course==courses.FirstOrDefault(c=>c.Id==selectedCourse)?.TitleAr).ToList();
+ List<AdminLesson> visibleLessons=>selectedCourse==Guid.Empty?new List<AdminLesson>():lessons.Where(l=>l.Course==courses.FirstOrDefault(c=>c.Id==selectedCourse)?.TitleAr).ToList();
+ List<AdminVideo> visibleVideos=>selectedCourse==Guid.Empty?new List<AdminVideo>():videos.Where(v=>v.Course==courses.FirstOrDefault(c=>c.Id==selectedCourse)?.TitleAr).ToList();
  void OpenCourseContent(Guid id){selectedCourse=id;CourseChanged();message="تم اختيار الدورة. افتح قسم المراحل والدروس أدناه لمراجعة المحتوى الموجود وحفظ التعديلات.";}
 
  List<AdminVideo> videos=new();
