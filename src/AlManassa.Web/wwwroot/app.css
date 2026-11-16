@@ -125,3 +125,5 @@ button:hover,.panel button:hover{background:var(--brand-navy-light)}
 .learning-certificate{border:3px double #d8a02b;text-align:center}
 .learning-certificate h2{color:#0a3262}
 @media print{.learning-header,.learning-stages,.learning-panel,.learning-certificate button{display:none!important}.learning-certificate{display:block!important;box-shadow:none}}
+
+.official-brand-logo{width:clamp(150px,16vw,245px);height:auto;max-height:68px;object-fit:contain;display:block}.official-splash-logo{display:block;width:min(84vw,480px);height:auto;object-fit:contain;margin:0 auto 20px}.brand-fallback small{display:block}@media(max-width:700px){.official-brand-logo{width:160px;max-height:50px}}
