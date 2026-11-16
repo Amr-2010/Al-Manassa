@@ -60,6 +60,31 @@ public sealed class CourseStore(IConfiguration config)
         while(await r.ReadAsync(ct)) list.Add(new(r.GetString(0),r.GetString(1),r.GetString(2),r.GetString(3)));
         return list;
     }
+    public async Task SeedCurriculaAsync(CancellationToken ct=default) {
+        var path=Path.Combine(AppContext.BaseDirectory,"database","003_sample_curricula.sql");
+        if(!File.Exists(path)) throw new FileNotFoundException("Curriculum SQL seed missing",path);
+        var sql=await File.ReadAllTextAsync(path,ct);
+        await using var conn=new NpgsqlConnection(ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand(sql,conn){CommandTimeout=90};
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+    public async Task<List<(string Course,int Stages,int Lessons,int Questions,int Videos)>> ContentAuditAsync(CancellationToken ct=default) {
+        await using var conn=new NpgsqlConnection(ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("""
+            SELECT c.title_ar,
+            (SELECT count(*) FROM course_stages s WHERE s.course_id=c.id),
+            (SELECT count(*) FROM stage_lessons l JOIN course_stages s ON s.id=l.stage_id WHERE s.course_id=c.id),
+            (SELECT count(*) FROM course_questions q WHERE q.course_id=c.id),
+            (SELECT count(*) FROM content_video_suggestions v WHERE v.course_id=c.id)
+            FROM courses c ORDER BY c.created_at DESC LIMIT 100
+            """,conn);
+        var result=new List<(string,int,int,int,int)>();
+        await using var r=await cmd.ExecuteReaderAsync(ct);
+        while(await r.ReadAsync(ct))result.Add((r.GetString(0),Convert.ToInt32(r.GetInt64(1)),Convert.ToInt32(r.GetInt64(2)),Convert.ToInt32(r.GetInt64(3)),Convert.ToInt32(r.GetInt64(4))));
+        return result;
+    }
     public async Task EnsureDemoSchemaAsync(CancellationToken ct=default) {
         await using var conn=new NpgsqlConnection(ConnectionString);
         await conn.OpenAsync(ct);
