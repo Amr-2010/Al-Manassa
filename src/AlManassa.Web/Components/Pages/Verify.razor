@@ -1,0 +1,22 @@
+@page "/verify/{Code:guid}"
+@using AlManassa.Web
+@inject LearningStore Learning
+<PageTitle>التحقق من الشهادة | المنصة</PageTitle>
+<main class="learning-page" dir="rtl">
+ <a href="/">المنصة · Al-Manassa</a>
+ <section class="learning-certificate">
+ <h1>التحقق من الشهادة التعليمية</h1>
+ @if(loading){<p>جارٍ التحقق من قاعدة البيانات...</p>}
+ else if(certificate is null){<p>لم يتم العثور على شهادة صالحة بهذا الرمز.</p>}
+ else{<h2>شهادة صحيحة ✓</h2><p>الدورة: @certificate.CourseTitle</p><p>صاحب الشهادة: @certificate.StudentEmail</p><p>تاريخ الإصدار: @certificate.IssuedAt.ToString("yyyy-MM-dd")</p><strong>رقم التحقق: @certificate.Code</strong>}
+ </section>
+</main>
+@code{
+ [Parameter] public Guid Code{get;set;}
+ bool loading=true;CertificateInfo? certificate;
+ protected override async Task OnParametersSetAsync(){
+   loading=true;
+   try{certificate=await Learning.VerifyCertificateAsync(Code);}catch{certificate=null;}
+   finally{loading=false;}
+ }
+}
