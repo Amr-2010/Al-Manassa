@@ -28,7 +28,7 @@
  @if(aiResult is not null){<p role="status">@aiResult</p>}
  </section>
  <section id="courses" class="panel content-admin-panel">
- <h2>إدارة الدورات بالكامل</h2><p><a href="/dashboard/subjects">إضافة أو تعديل الأقسام التعليمية ←</a></p><p>إنشاء وتعديل ونشر وإلغاء نشر الدورات. الحذف ممنوع للدورات التي تحتوي مراحل أو تسجيلات حفاظًا على بيانات الطلاب.</p>
+ <h2>الأقسام ← الكورسات ← الدروس</h2><p>كل كورس يتكون من 10 دروس، مع اختبار قصير لكل درس (سؤالان)، ثم امتحان نهائي من 20 سؤالًا. يجب إدخال الأسئلة ومراجعتها قبل نشر الدورة.</p><p><a href="/dashboard/subjects">إضافة أو تعديل الأقسام التعليمية ←</a></p><p>إنشاء وتعديل ونشر وإلغاء نشر الدورات. الحذف ممنوع للدورات التي تحتوي مراحل أو تسجيلات حفاظًا على بيانات الطلاب.</p>
  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
  <label>العنوان بالعربية<input style="width:100%" @bind="courseAr" /></label>
  <label>العنوان بالإنجليزية<input style="width:100%" @bind="courseEn" /></label>
@@ -51,7 +51,7 @@
  @foreach(var st in stages.Where(x=>x.CourseId==selectedCourse)){
  <details style="margin:12px 0;padding:12px;border:1px solid #ccd6e5;border-radius:10px"><summary>@st.Position — @st.Title</summary>
  <input value="@st.Title" @onchange="e=>stageTitles[st.Id]=e.Value?.ToString()??string.Empty" /><button @onclick="()=>RenameStage(st.Id,st.Title)">تعديل اسم المرحلة</button>
- <p>إضافة درس إلى المرحلة:</p><input placeholder="عنوان الدرس" @bind="newLessonTitle" /><textarea style="display:block;width:100%;min-height:90px" placeholder="المحتوى التعليمي" @bind="newLessonContent"></textarea><button @onclick="()=>AddLesson(st.Id)">إضافة الدرس</button>
+ <p>إضافة درس إلى المرحلة (بحد أقصى 10 دروس لكل كورس):</p><input placeholder="عنوان الدرس" @bind="newLessonTitle" /><textarea style="display:block;width:100%;min-height:90px" placeholder="المحتوى التعليمي" @bind="newLessonContent"></textarea><button @onclick="()=>AddLesson(st.Id)">إضافة الدرس</button>
  </details>
  }
  </section>
@@ -64,7 +64,9 @@
   <input style="display:block;width:100%;padding:10px;margin:8px 0" value="@lesson.Title" @onchange="e => UpdateTitle(lesson.Id, e.Value?.ToString() ?? string.Empty)" />
   <label>محتوى الدرس</label>
   <textarea style="display:block;width:100%;min-height:160px;padding:10px;margin:8px 0" @onchange="e => UpdateBody(lesson.Id, e.Value?.ToString() ?? string.Empty)">@lesson.Content</textarea>
-  <button @onclick="()=>SaveLesson(lesson.Id)">حفظ التعديلات</button> <button @onclick="()=>DeleteLesson(lesson.Id)">حذف الدرس إذا لم يُستكمل</button>
+  <label style="display:block;margin-top:12px">رابط فيديو YouTube للدرس (اختياري)</label>
+  <input style="display:block;width:100%;margin:8px 0" placeholder="https://www.youtube.com/watch?v=..." value="@(lesson.VideoProvider=="youtube" && lesson.VideoReference is not null ? "https://www.youtube.com/watch?v="+lesson.VideoReference : "")" @onchange="e=>youtubeLinks[lesson.Id]=e.Value?.ToString()??string.Empty" />
+  <button @onclick="()=>SaveLesson(lesson.Id)">حفظ المنهج ورابط الفيديو</button> <button @onclick="()=>DeleteLesson(lesson.Id)">حذف الدرس إذا لم يُستكمل</button>
  </details>
  }
  <h2 id="videos">مقترحات الفيديو (@visibleVideos.Count)</h2>
@@ -96,7 +98,7 @@
  async Task DeleteCourse(Guid id){try{await Editor.DeleteCourseAsync(id);message="تم حذف الدورة الفارغة";await Reload();}catch(Exception){message="لا يمكن حذف دورة بها مراحل أو تسجيلات؛ ألغِ نشرها بدلًا من ذلك";}}
  async Task AddStage(){try{await Editor.AddStageAsync(selectedCourse,newStageTitle);newStageTitle="";message="تمت إضافة المرحلة";await Reload();}catch(Exception){message="اختر دورة وعنوان مرحلة صحيحًا";}}
  async Task RenameStage(Guid id,string current){try{await Editor.RenameStageAsync(id,stageTitles.GetValueOrDefault(id,current));message="تم تحديث المرحلة";await Reload();}catch(Exception){message="تعذر تعديل المرحلة";}}
- async Task AddLesson(Guid id){try{await Editor.AddLessonAsync(id,newLessonTitle,newLessonContent);newLessonTitle="";newLessonContent="";message="تمت إضافة الدرس";await Reload();}catch(Exception){message="تعذر إضافة الدرس";}}
+ async Task AddLesson(Guid id){try{await Editor.AddLessonAsync(id,newLessonTitle,newLessonContent);newLessonTitle="";newLessonContent="";message="تمت إضافة الدرس";await Reload();}catch(Exception){message="تعذر إضافة الدرس. تأكد من اختيار المرحلة، وإدخال العنوان والمنهج، وعدم تجاوز 10 دروس للكورس.";}}
  async Task DeleteLesson(Guid id){try{await Editor.DeleteLessonAsync(id);message="تم حذف الدرس";await Reload();}catch(Exception){message="تعذر حذف الدرس لأنه مكتمل لدى طالب أو مرتبط ببيانات أخرى";}}
  List<AdminLesson> lessons=new();
  List<AdminLesson> visibleLessons=>selectedCourse==Guid.Empty?new List<AdminLesson>():lessons.Where(l=>l.Course==courses.FirstOrDefault(c=>c.Id==selectedCourse)?.TitleAr).ToList();
@@ -104,7 +106,7 @@
  void OpenCourseContent(Guid id){selectedCourse=id;CourseChanged();message="تم اختيار الدورة. افتح قسم المراحل والدروس أدناه لمراجعة المحتوى الموجود وحفظ التعديلات.";}
 
  List<AdminVideo> videos=new();
- Dictionary<Guid,string> titles=new(),bodies=new(),videoIds=new();
+ Dictionary<Guid,string> titles=new(),bodies=new(),videoIds=new(),youtubeLinks=new();
  string? message;
  protected override async Task OnInitializedAsync()=>await Reload();
  async Task Reload(){try{courses=await Editor.CoursesAsync();subjects=await Store.AllSubjectsAsync();stages=await Editor.StagesAsync();lessons=await Editor.LessonsAsync();videos=await Editor.VideosAsync();}catch(Exception){message="تعذر تحميل المحتوى من قاعدة البيانات";}}
@@ -113,7 +115,7 @@
  void UpdateBody(Guid id,string s)=>bodies[id]=s;
  void SetVideo(Guid id,string s)=>videoIds[id]=s;
  async Task SaveLesson(Guid id){
-  try{var l=lessons.First(x=>x.Id==id);await Editor.SaveLessonAsync(id,titles.GetValueOrDefault(id,l.Title),bodies.GetValueOrDefault(id,l.Content));message="تم حفظ الدرس";await Reload();}
+  try{var l=lessons.First(x=>x.Id==id);await Editor.SaveLessonAsync(id,titles.GetValueOrDefault(id,l.Title),bodies.GetValueOrDefault(id,l.Content));if(youtubeLinks.ContainsKey(id))await Editor.SetLessonYoutubeAsync(id,youtubeLinks[id]);message="تم حفظ الدرس والفيديو";await Reload();}
   catch(Exception){message="فشل حفظ الدرس؛ راجع العنوان والمحتوى والاتصال";}
  }
  async Task ReviewVideo(Guid id,bool approve){
