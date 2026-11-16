@@ -1,6 +1,6 @@
 using Npgsql;
 namespace AlManassa.Web;
-public record CourseItem(Guid Id,string TitleAr,string TitleEn,string Description,string Category,int Weeks,bool Published);
+public record CourseItem(Guid Id,string TitleAr,string TitleEn,string Description,string Category,int DurationWeeks,bool Published);
 public sealed class CourseStore(IConfiguration config)
 {
     private string ConnectionString {
