@@ -8,7 +8,7 @@
 <main dir="rtl" class="content-admin">
  <a href="/dashboard">← لوحة الإدارة</a>
  <h1>إدارة الكورسات والمناهج</h1>
- <nav class="content-admin-nav"><a href="/dashboard/subjects">1. الأقسام</a><a href="#courses">2. الكورسات</a><a href="#course-content">3. المراحل والدروس</a><a href="#ai-generator">4. الذكاء الاصطناعي</a></nav>
+ <nav class="content-admin-nav"><a href="/dashboard/subjects">1. الأقسام</a><a href="#courses">2. الكورسات</a><a href="#course-content">3. الدروس</a><a href="#ai-generator">4. الذكاء الاصطناعي</a></nav>
  @if(!string.IsNullOrEmpty(Notice)){<p class="category-notice" role="status">@Notice</p>}
  <section id="courses" class="panel content-admin-panel">
   <h2>2. @(editing is null?"إضافة كورس جديد":"تعديل بيانات الكورس: "+editing.TitleAr)</h2>
@@ -29,23 +29,19 @@
   </form>
   <h3>الكورسات المسجلة (@courses.Count)</h3>
   <div class="content-table-scroll"><table class="content-courses-table"><thead><tr><th>الكورس</th><th>القسم</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>
-  @foreach(var c in courses){<tr><td>@c.TitleAr</td><td>@subjects.FirstOrDefault(x=>x.Key==c.Category)?.Name</td><td>@(c.Published?"منشور":"مسودة")</td><td><a href="@("/dashboard/content?edit="+c.Id+"#courses")">تعديل</a> | <a href="@("/dashboard/content?course="+c.Id+"#course-content")">المراحل والدروس</a> | <a href="@("/dashboard/content?delete="+c.Id+"#delete-course")">حذف</a></td></tr>}
+  @foreach(var c in courses){<tr><td>@c.TitleAr</td><td>@subjects.FirstOrDefault(x=>x.Key==c.Category)?.Name</td><td>@(c.Published?"منشور":"مسودة")</td><td><a href="@("/dashboard/content?edit="+c.Id+"#courses")">تعديل</a> | <a href="@("/dashboard/content?course="+c.Id+"#course-content")">الدروس</a> | <a href="@("/dashboard/content?delete="+c.Id+"#delete-course")">حذف</a></td></tr>}
   </tbody></table></div>
-  @if(deleting is not null){<div class="category-notice" id="delete-course"><h3>تأكيد حذف: @deleting.TitleAr</h3><p>لا يمكن حذف كورس له مراحل أو تسجيلات طلاب حفاظًا على بياناتهم.</p><form method="post" action="/api/admin/courses/delete"><AntiforgeryToken /><input type="hidden" name="id" value="@deleting.Id" /><button type="submit">تأكيد حذف الكورس الفارغ</button> <a href="/dashboard/content#courses">إلغاء</a></form></div>}
+  @if(deleting is not null){<div class="category-notice" id="delete-course"><h3>تأكيد حذف: @deleting.TitleAr</h3><p>لا يمكن حذف كورس يحتوي على دروس أو تسجيلات طلاب حفاظًا على بياناتهم.</p><form method="post" action="/api/admin/courses/delete"><AntiforgeryToken /><input type="hidden" name="id" value="@deleting.Id" /><button type="submit">تأكيد حذف الكورس الفارغ</button> <a href="/dashboard/content#courses">إلغاء</a></form></div>}
  </section>
  <section id="course-content" class="panel content-admin-panel">
-  <h2>3. المراحل والدروس</h2>
-  <p>اختر كورسًا من الجدول بالأعلى. كل مرحلة تحتوي على عدد غير محدود من الدروس، ويكتب الناشر المحتوى بنفسه.</p>
-  @if(selected is null){<p class="category-notice">لم يتم تحديد كورس بعد. اضغط «المراحل والدروس» أمام الكورس المطلوب.</p>}
+  <h2>3. الدروس</h2>
+  <p>اختر الكورس من الجدول بالأعلى، ثم أضف الدروس مباشرة بالترتيب. عدد الدروس غير محدود.</p>
+  @if(selected is null){<p class="category-notice">لم يتم تحديد كورس بعد. اضغط «الدروس» أمام الكورس المطلوب.</p>}
   else {
-   <h3>الكورس المحدد: @selected.TitleAr</h3>
-   <form method="post" action="/api/admin/stages/add"><AntiforgeryToken /><input type="hidden" name="course" value="@selected.Id" /><label>عنوان المرحلة الجديدة<input name="title" maxlength="250" required /></label><button type="submit">إضافة مرحلة</button></form>
-   @foreach(var st in stages.Where(x=>x.CourseId==selected.Id)){
-    <details open style="margin:12px 0;padding:14px;border:1px solid #ccd6e5;border-radius:10px">
-     <summary><strong>المرحلة @st.Position: @st.Title</strong></summary>
-     <form method="post" action="/api/admin/stages/rename"><AntiforgeryToken /><input type="hidden" name="id" value="@st.Id" /><input type="hidden" name="course" value="@selected.Id" /><label>اسم المرحلة<input name="title" value="@st.Title" maxlength="250" required /></label><button type="submit">حفظ اسم المرحلة</button></form>
-     <h4>إضافة درس للمرحلة</h4>
-     <form method="post" action="/api/admin/lessons/add"><AntiforgeryToken /><input type="hidden" name="stage" value="@st.Id" /><input type="hidden" name="course" value="@selected.Id" /><label>عنوان الدرس<input name="title" maxlength="250" required /></label><div class="lesson-rich-editor" data-lesson-editor>
+   <h3>دروس الكورس: @selected.TitleAr</h3>
+   <h4>إضافة درس جديد</h4>
+
+     <form method="post" action="/api/admin/lessons/add"><AntiforgeryToken /><input type="hidden" name="course" value="@selected.Id" /><label>عنوان الدرس<input name="title" maxlength="250" required /></label><div class="lesson-rich-editor" data-lesson-editor>
        <div class="lesson-editor-toolbar" role="toolbar" aria-label="تنسيق المنهج">
         <button type="button" data-format="bold" title="عريض"><strong>B</strong></button>
         <button type="button" data-format="italic" title="مائل"><em>I</em></button>
@@ -60,7 +56,7 @@
        <div class="lesson-editable" contenteditable="true" role="textbox" aria-multiline="true" aria-label="محتوى المنهج" data-placeholder="اكتب المنهج هنا ونسقه باستخدام الأدوات..."></div>
        <textarea name="content" hidden></textarea>
       </div><button type="submit">إضافة الدرس</button></form>
-     @foreach(var l in lessons.Where(x=>x.Stage==st.Title && x.Course==selected.TitleAr)){
+     @foreach(var l in lessons.Where(x=>x.Course==selected.TitleAr)){
       <details style="padding:12px;margin:10px 0;border:1px solid #d6dbe5;border-radius:8px"><summary>@l.Title</summary>
        <form method="post" action="/api/admin/lessons/save"><AntiforgeryToken /><input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="course" value="@selected.Id" /><label>عنوان الدرس<input name="title" value="@l.Title" required /></label><div class="lesson-rich-editor" data-lesson-editor>
        <div class="lesson-editor-toolbar" role="toolbar" aria-label="تنسيق المنهج">
@@ -87,8 +83,6 @@
        <form method="post" action="/api/admin/lessons/delete"><AntiforgeryToken /><input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="course" value="@selected.Id" /><button type="submit">حذف الدرس إذا لم يدرسه أي طالب</button></form>
       </details>
      }
-    </details>
-   }
   }
  </section>
  <section id="ai-generator" class="panel content-admin-panel">
