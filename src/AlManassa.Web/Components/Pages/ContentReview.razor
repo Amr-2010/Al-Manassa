@@ -1,0 +1,55 @@
+@page "/dashboard/content"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles="Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using AlManassa.Web
+@inject ContentEditor Editor
+<PageTitle>مراجعة المحتوى | المنصة</PageTitle>
+<main dir="rtl" style="max-width:1150px;margin:32px auto;padding:20px">
+ <a href="/dashboard">← لوحة الإدارة</a>
+ <h1>مراجعة وتعديل المحتوى</h1>
+ <p>التعديلات تحفظ مباشرة في PostgreSQL. تحقق من الفيديو وصلاحية تضمينه قبل الموافقة.</p>
+ @if(message is not null){<p role="status">@message</p>}
+ <h2>الدروس (@lessons.Count)</h2>
+ @foreach(var lesson in lessons){
+ <details style="border:1px solid #d6dbe5;border-radius:12px;padding:16px;margin:12px 0">
+  <summary><strong>@lesson.Course</strong> / @lesson.Stage / @lesson.Title</summary>
+  <label>عنوان الدرس</label>
+  <input style="display:block;width:100%;padding:10px;margin:8px 0" value="@lesson.Title" @onchange="e=>UpdateTitle(lesson.Id,e.Value?.ToString()??"")" />
+  <label>محتوى الدرس</label>
+  <textarea style="display:block;width:100%;min-height:160px;padding:10px;margin:8px 0" @onchange="e=>UpdateBody(lesson.Id,e.Value?.ToString()??"")">@lesson.Content</textarea>
+  <button @onclick="()=>SaveLesson(lesson.Id)">حفظ التعديلات</button>
+ </details>
+ }
+ <h2>مقترحات الفيديو (@videos.Count)</h2>
+ @foreach(var video in videos){
+ <div style="border:1px solid #d6dbe5;border-radius:12px;padding:16px;margin:12px 0">
+ <strong>@video.Course / @video.Stage</strong><p>كلمات البحث: @video.Query</p>
+ <p>الحالة: @video.Status</p>
+ <a href="@("https://www.youtube.com/results?search_query="+Uri.EscapeDataString(video.Query))" target="_blank" rel="noopener noreferrer">البحث عن فيديو على YouTube</a>
+ <label style="display:block;margin-top:12px">معرّف فيديو YouTube (11 حرفًا)</label>
+ <input style="padding:10px;width:min(400px,100%)" value="@video.VideoId" @onchange="e=>SetVideo(video.Id,e.Value?.ToString()??"")" />
+ <button @onclick="()=>ReviewVideo(video.Id,true)">اعتماد وربط بالدرس الأول</button>
+ <button @onclick="()=>ReviewVideo(video.Id,false)">رفض</button>
+ </div>
+ }
+</main>
+@code {
+ List<AdminLesson> lessons=new();
+ List<AdminVideo> videos=new();
+ Dictionary<Guid,string> titles=new(),bodies=new(),videoIds=new();
+ string? message;
+ protected override async Task OnInitializedAsync()=>await Reload();
+ async Task Reload(){try{lessons=await Editor.LessonsAsync();videos=await Editor.VideosAsync();}catch(Exception){message="تعذر تحميل المحتوى من قاعدة البيانات";}}
+ void UpdateTitle(Guid id,string s)=>titles[id]=s;
+ void UpdateBody(Guid id,string s)=>bodies[id]=s;
+ void SetVideo(Guid id,string s)=>videoIds[id]=s;
+ async Task SaveLesson(Guid id){
+  try{var l=lessons.First(x=>x.Id==id);await Editor.SaveLessonAsync(id,titles.GetValueOrDefault(id,l.Title),bodies.GetValueOrDefault(id,l.Content));message="تم حفظ الدرس";await Reload();}
+  catch(Exception){message="فشل حفظ الدرس؛ راجع العنوان والمحتوى والاتصال";}
+ }
+ async Task ReviewVideo(Guid id,bool approve){
+  try{var v=videos.First(x=>x.Id==id);await Editor.ReviewVideoAsync(id,videoIds.GetValueOrDefault(id,v.VideoId??""),approve);message=approve?"تم اعتماد الفيديو وربطه بالدرس":"تم رفض الاقتراح";await Reload();}
+  catch(Exception){message="تعذر اعتماد الفيديو. تأكد من معرف الفيديو والاتصال.";}
+ }
+}
