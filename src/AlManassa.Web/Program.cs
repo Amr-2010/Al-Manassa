@@ -10,7 +10,7 @@ builder.Services.AddScoped<CourseStore>();
 builder.Services.AddHttpClient("ai", c=>{c.BaseAddress=new Uri("https://api.openai.com/");c.Timeout=TimeSpan.FromSeconds(90);});
 var app = builder.Build();
 app.MapGet("/health", () => Results.Ok(new {status="ok",application="Al-Manassa Web"}));
-app.MapGet("/health/database", async (CourseStore store, CancellationToken ct) => { try { var counts = await store.CountsAsync(ct); return Results.Ok(new {status="connected",courseCount=counts.Total}); } catch { return Results.Json(new {status="unavailable"},statusCode:503); } });
+app.MapGet("/health/database", async (CourseStore store, CancellationToken ct) => { try { var counts = await store.CountsAsync(ct); return Results.Ok(new {status="connected",courseCount=counts.Total}); } catch (Exception ex) { var reason = ex switch { InvalidOperationException => "configuration_missing", Npgsql.PostgresException pg when pg.SqlState == "42P01" => "schema_missing", Npgsql.PostgresException pg when pg.SqlState == "28P01" => "authentication_failed", Npgsql.NpgsqlException => "connection_failed", _ => "database_error" }; return Results.Json(new {status="unavailable",reason},statusCode:503); } });
 app.MapPost("/api/admin/ai/curriculum", async (HttpContext ctx, CurriculumInput input, CourseStore store, IHttpClientFactory clients, IConfiguration config, CancellationToken ct) => {
     // Temporary server-side API key gate. Replace with ASP.NET Identity roles before exposing admin UI.
     var expected=config["AI_ADMIN_TOKEN"];
@@ -40,6 +40,7 @@ app.MapPost("/api/admin/ai/curriculum", async (HttpContext ctx, CurriculumInput 
     }
 });
 app.UseStaticFiles();
+app.MapStaticAssets();
 app.UseAntiforgery();
 app.MapRazorComponents<AlManassa.Web.Components.App>().AddInteractiveServerRenderMode();
 app.Run();
