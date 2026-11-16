@@ -8,7 +8,7 @@
 <main dir="rtl" class="category-admin">
  <a href="/dashboard">← لوحة الإدارة</a>
  <h1>إدارة الأقسام والتصنيفات</h1>
- <p>جميع التغييرات تحفظ في قاعدة PostgreSQL وتظهر في الصفحة الرئيسية.</p>
+ <p>إضافة وتعديل وحذف الأقسام. تُحفظ التغييرات في PostgreSQL وتظهر في الصفحة الرئيسية.</p>
  @if(message is not null){<p role="status" class="category-notice">@message</p>}
  <section id="category-editor" class="panel category-editor">
   <h2>@(editing?"تعديل القسم":"إضافة قسم جديد")</h2>
@@ -16,15 +16,16 @@
    <label>معرّف القسم (بالإنجليزية)<input @bind="slug" disabled="@editing" maxlength="100" placeholder="Marketing" /></label>
    <label>اسم القسم بالعربية<input @bind="name" maxlength="200" placeholder="التسويق الرقمي" /></label>
    <label>رمز القسم<input @bind="icon" maxlength="20" placeholder="◆" /></label>
+   <label>وصف القسم<textarea @bind="description" maxlength="3000" rows="4" placeholder="اكتب وصف القسم ومجالاته التعليمية"></textarea></label>
   </div>
-  <button @onclick="Save">@(editing?"حفظ التعديلات":"إضافة القسم")</button>
-  <button @onclick="Reset">قسم جديد</button>
+  <button type="button" @onclick="Save">@(editing?"حفظ التعديلات":"إضافة القسم")</button>
+  @if(editing){<button type="button" @onclick="Reset">إلغاء التعديل</button>}
  </section>
  <section class="panel">
   <h2>الأقسام المسجلة (@subjects.Count)</h2>
   <div class="admin-category-grid">
    @foreach(var subject in subjects){
-    <article><span class="admin-category-icon">@subject.Icon</span><h3>@subject.Name</h3><small>@subject.Key — @(subject.Active?"ظاهر":"مخفي")</small>
+    <article><span class="admin-category-icon">@subject.Icon</span><h3>@subject.Name</h3><small>@subject.Key — @(subject.Active?"ظاهر":"مخفي")</small><p>@subject.Description</p>
      <div class="category-actions"><a class="category-edit-link" href="#category-editor" @onclick="()=>Edit(subject)">تعديل</a><button type="button" @onclick="()=>AskDelete(subject.Key)">@(subject.Active?"حذف":"محذوف من العرض")</button></div>
     </article>
    }
@@ -34,12 +35,12 @@
 </main>
 @code {
  List<SubjectItem> subjects=new();
- string slug="",name="",icon="◆";bool editing;string? message;string? pendingDelete;
+ string slug="",name="",icon="◆",description="";bool editing;string? message;string? pendingDelete;
  protected override async Task OnInitializedAsync()=>await Reload();
  async Task Reload(){try{subjects=await Store.AllSubjectsAsync();}catch(Exception){message="تعذر تحميل الأقسام من PostgreSQL";}}
- void Edit(SubjectItem s){slug=s.Key;name=s.Name;icon=s.Icon;editing=true;}
- void Reset(){slug="";name="";icon="◆";editing=false;}
- async Task Save(){try{await Store.SaveSubjectAsync(slug,name,icon);message="تم حفظ القسم في قاعدة البيانات";Reset();await Reload();}catch(Exception){message="تعذر الحفظ؛ تحقق من البيانات واتصال قاعدة البيانات";}}
+ void Edit(SubjectItem s){slug=s.Key;name=s.Name;icon=s.Icon;description=s.Description;editing=true;message="أنت الآن تعدّل القسم: "+s.Name;}
+ void Reset(){slug="";name="";icon="◆";description="";editing=false;}
+ async Task Save(){try{await Store.SaveSubjectAsync(slug,name,icon,description);message="تم حفظ القسم في قاعدة البيانات";Reset();await Reload();}catch(Exception ex){message="تعذر الحفظ: "+ex.Message;}}
  void AskDelete(string key){pendingDelete=key;message="يرجى تأكيد الحذف أسفل قائمة الأقسام.";}
  async Task ConfirmDelete(){if(pendingDelete is null)return;try{message=await Store.DeleteSubjectAsync(pendingDelete);pendingDelete=null;await Reload();}catch(Exception ex){message="تعذر الحذف: "+ex.Message;}}
 }
