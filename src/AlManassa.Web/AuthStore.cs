@@ -48,11 +48,17 @@ public sealed class AuthStore(IConfiguration config) {
     public async Task<(Guid Id,string Role)?> ValidateAsync(string email,string password) {
         await using var c=new NpgsqlConnection(ConnectionString);await c.OpenAsync();
         await using var cmd=new NpgsqlCommand("select id,password_hash,role from app_users where email=@email",c);
-        cmd.Parameters.AddWithValue("email",email.Trim().ToLowerInvariant());
+        var login=email.Trim().ToLowerInvariant();
+        if(login=="admin") {
+            var adminEmail=config["ADMIN_EMAIL"]?.Trim().ToLowerInvariant();
+            if(string.IsNullOrWhiteSpace(adminEmail)) return null;
+            login=adminEmail;
+        }
+        cmd.Parameters.AddWithValue("email",login);
         await using var r=await cmd.ExecuteReaderAsync();
         if(!await r.ReadAsync()) return null;
         var id=r.GetGuid(0);var hash=r.GetString(1);var role=r.GetString(2);
-        return Verify(password,hash)?(id,role):null;
+        return email.Trim().Equals("admin",StringComparison.OrdinalIgnoreCase) && role!="Admin" ? null : (Verify(password,hash)?(id,role):null);
     }
     public async Task<bool> RegisterAsync(string email,string password) {
         await using var c=new NpgsqlConnection(ConnectionString);await c.OpenAsync();
