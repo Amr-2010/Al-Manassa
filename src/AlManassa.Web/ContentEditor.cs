@@ -1,4 +1,5 @@
 using Npgsql;
+using Ganss.Xss;
 namespace AlManassa.Web;
 public record AdminLesson(Guid Id,string Course,string Stage,string Title,string Content,string? VideoProvider,string? VideoReference);
 public record AdminVideo(Guid Id,string Course,string Stage,string Query,string? VideoId,string Status);
@@ -46,6 +47,13 @@ public sealed class ContentEditor(IConfiguration config) {
   cmd.Parameters.AddWithValue("id",Guid.NewGuid());cmd.Parameters.AddWithValue("course",courseId);cmd.Parameters.AddWithValue("title",title.Trim());
   if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Course not found");
  }
+ public static string CleanLessonHtml(string html){
+  var sanitizer=new HtmlSanitizer();
+  sanitizer.AllowedTags.Clear();
+  foreach(var tag in new[]{"p","div","br","strong","b","em","i","u","s","h2","h3","h4","ul","ol","li","blockquote","span"})sanitizer.AllowedTags.Add(tag);
+  sanitizer.AllowedAttributes.Clear();
+  return sanitizer.Sanitize(html);
+ }
  public async Task AddLessonAsync(Guid stageId,string title,string content){
   if(string.IsNullOrWhiteSpace(title)||title.Length>250||string.IsNullOrWhiteSpace(content)||content.Length>30000)throw new ArgumentException("Invalid lesson");
   await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
@@ -54,7 +62,7 @@ public sealed class ContentEditor(IConfiguration config) {
    SELECT @id,@stage,@title,@content,COALESCE((SELECT MAX(l.position)+1 FROM stage_lessons l WHERE l.stage_id=@stage),1)
    WHERE EXISTS(SELECT 1 FROM course_stages WHERE id=@stage)
    """,db);
-  cmd.Parameters.AddWithValue("id",Guid.NewGuid());cmd.Parameters.AddWithValue("stage",stageId);cmd.Parameters.AddWithValue("title",title.Trim());cmd.Parameters.AddWithValue("content",content.Trim());
+  cmd.Parameters.AddWithValue("id",Guid.NewGuid());cmd.Parameters.AddWithValue("stage",stageId);cmd.Parameters.AddWithValue("title",title.Trim());cmd.Parameters.AddWithValue("content",CleanLessonHtml(content.Trim()));
   if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Stage not found");
  }
  public async Task<List<(Guid Id,Guid CourseId,string Title,int Position)>> StagesAsync(){
