@@ -9,8 +9,8 @@ public sealed class CurriculumAiService(IConfiguration config,IHttpClientFactory
   if(string.IsNullOrWhiteSpace(key))throw new InvalidOperationException("GEMINI_API_KEY is not configured");
   var prompt=$"""
   Design a complete original {weeks}-week {level} course on {topic} in {language}.
-  Return a JSON object with title, overview, stages, final_exam.
-  Each stage must contain title, objectives, at least 3 substantial lessons with title, content, exercise, video_search_query, and at least 5 multiple-choice quiz questions.
+  Return a JSON object with title, overview, lessons, final_exam.
+  Provide 3 to 6 ordered lessons directly under lessons (no stages or units). Each lesson has title, content, exercise, video_search_query, and exactly 2 multiple-choice quiz questions.
   The final_exam must have exactly 20 distinct, subject-specific multiple-choice questions.
   Each question has prompt and exactly four options with label and is_correct; exactly one correct option.
   Ensure educational accuracy, meaningful explanations, increasing difficulty, no generic repeated questions.
@@ -23,7 +23,7 @@ public sealed class CurriculumAiService(IConfiguration config,IHttpClientFactory
   req.Headers.Add("x-goog-api-key",key);
   req.Content=JsonContent.Create(new {
    contents=new[]{new{parts=new[]{new{text=prompt}}}},
-   generationConfig=new{responseMimeType="application/json",maxOutputTokens=8192}
+   generationConfig=new{responseMimeType="application/json",maxOutputTokens=16384}
   });
   using var response=await factory.CreateClient("gemini").SendAsync(req);
   if(!response.IsSuccessStatusCode){
@@ -31,10 +31,11 @@ public sealed class CurriculumAiService(IConfiguration config,IHttpClientFactory
    throw new InvalidOperationException("Gemini API error: HTTP "+(int)response.StatusCode);
   }
   using var outer=JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-  var raw=outer.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString()??throw new InvalidOperationException("Empty Gemini response");
+  var raw=string.Concat(outer.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts").EnumerateArray().Select(x=>x.TryGetProperty("text",out var t)?t.GetString():""));
+  if(string.IsNullOrWhiteSpace(raw))throw new InvalidOperationException("Empty Gemini response");
   using var doc=JsonDocument.Parse(raw);
   var root=doc.RootElement;
-  if(!root.TryGetProperty("stages",out var stages)||stages.ValueKind!=JsonValueKind.Array||stages.GetArrayLength()==0)throw new InvalidOperationException("Missing stages");
+  if(!root.TryGetProperty("lessons",out var lessons)||lessons.ValueKind!=JsonValueKind.Array||lessons.GetArrayLength()==0)throw new InvalidOperationException("Missing lessons");
   if(!root.TryGetProperty("final_exam",out var exam)||exam.ValueKind!=JsonValueKind.Array||exam.GetArrayLength()!=20)throw new InvalidOperationException("Final exam must contain 20 questions");
   var id=Guid.NewGuid();
   await store.SaveSuggestionAsync(id,topic,level,language,weeks,raw,"Gemini");
