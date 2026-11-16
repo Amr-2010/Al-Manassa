@@ -15,7 +15,7 @@ builder.Services.AddScoped<CourseStore>();
 builder.Services.AddScoped<AuthStore>();
 builder.Services.AddScoped<LearningStore>();
 builder.Services.AddScoped<ContentEditor>();
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options => { options.LoginPath="/login"; options.Cookie.Name="AlManassa.Auth"; options.Cookie.HttpOnly=true; options.Cookie.SecurePolicy=CookieSecurePolicy.Always; options.Cookie.SameSite=SameSiteMode.Lax; options.ExpireTimeSpan=TimeSpan.FromHours(8); });
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options => { options.LoginPath="/login"; options.Cookie.Name="AlManassa.Auth"; options.Cookie.HttpOnly=true; options.Cookie.SecurePolicy=CookieSecurePolicy.Always; options.Cookie.SameSite=SameSiteMode.Lax; options.ExpireTimeSpan=TimeSpan.FromDays(30); options.SlidingExpiration=true; options.Events.OnRedirectToLogin=context=>{context.Response.Redirect("/login?returnUrl="+Uri.EscapeDataString(context.Request.Path+context.Request.QueryString));return Task.CompletedTask;}; });
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAntiforgery();
@@ -68,10 +68,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseStaticFiles();
 app.MapGet("/login", (HttpContext ctx, IAntiforgery af) => {
+    if(ctx.User.Identity?.IsAuthenticated==true) return Results.Redirect(ctx.User.IsInRole("Admin")?"/dashboard":"/");
     var token=af.GetAndStoreTokens(ctx).RequestToken;
-    return Results.Content(AuthPage("دخول الحساب","/login",token!),"text/html; charset=utf-8");
+    return Results.Content(AuthPage("دخول الحساب","/login",token!,ctx.Request.Query["returnUrl"].ToString()),"text/html; charset=utf-8");
 });
 app.MapGet("/register", (HttpContext ctx, IAntiforgery af) => {
+    if(ctx.User.Identity?.IsAuthenticated==true) return Results.Redirect(ctx.User.IsInRole("Admin")?"/dashboard":"/");
     var token=af.GetAndStoreTokens(ctx).RequestToken;
     return Results.Content(AuthPage("إنشاء حساب طالب","/register",token!),"text/html; charset=utf-8");
 });
@@ -79,12 +81,16 @@ app.MapPost("/login", async (HttpContext ctx, IAntiforgery af, AuthStore users) 
     if(!await af.IsRequestValidAsync(ctx)) return Results.BadRequest("Invalid form token");
     var form=await ctx.Request.ReadFormAsync();
     var email=form["email"].ToString();var password=form["password"].ToString();
+    var remember=form["remember"].ToString()=="on";
+    var returnUrl=form["returnUrl"].ToString();
     if(email.Length>320||password.Length>1024) return Results.BadRequest();
     var account=await users.ValidateAsync(email,password);
     if(account is null) return Results.Content("بيانات الدخول غير صحيحة. <a href='/login'>حاول مرة أخرى</a>","text/html; charset=utf-8",statusCode:401);
     var claims=new[]{new Claim(ClaimTypes.NameIdentifier,account.Value.Id.ToString()),new Claim(ClaimTypes.Email,email),new Claim(ClaimTypes.Role,account.Value.Role)};
-    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,new ClaimsPrincipal(new ClaimsIdentity(claims,CookieAuthenticationDefaults.AuthenticationScheme)));
-    return Results.Redirect(account.Value.Role=="Admin"?"/dashboard":"/");
+    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,new ClaimsPrincipal(new ClaimsIdentity(claims,CookieAuthenticationDefaults.AuthenticationScheme)),new AuthenticationProperties { IsPersistent=remember, AllowRefresh=true, ExpiresUtc=remember?DateTimeOffset.UtcNow.AddDays(30):DateTimeOffset.UtcNow.AddHours(8) });
+    var defaultDestination=account.Value.Role=="Admin"?"/dashboard":"/";
+    if(!string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith("/") && !returnUrl.StartsWith("//") && !returnUrl.Contains("\\") && (!returnUrl.StartsWith("/dashboard",StringComparison.OrdinalIgnoreCase)||account.Value.Role=="Admin")) return Results.Redirect(returnUrl);
+    return Results.Redirect(defaultDestination);
 });
 app.MapPost("/register", async (HttpContext ctx, IAntiforgery af, AuthStore users) => {
     if(!await af.IsRequestValidAsync(ctx)) return Results.BadRequest("Invalid form token");
@@ -92,11 +98,11 @@ app.MapPost("/register", async (HttpContext ctx, IAntiforgery af, AuthStore user
     var email=form["email"].ToString().Trim();var password=form["password"].ToString();
     if(email.Length is <5 or >320||!email.Contains('@')||password.Length is <12 or >128) return Results.BadRequest("Email invalid or password must be 12-128 characters");
     var created=await users.RegisterAsync(email,password);
-    return created?Results.Redirect("/login"):Results.Conflict("Account already exists");
+    return created?Results.Redirect("/login?registered=1"):Results.Conflict("Account already exists");
 });
 app.MapPost("/logout",async (HttpContext ctx,IAntiforgery af) => {if(!await af.IsRequestValidAsync(ctx)) return Results.BadRequest();await ctx.SignOutAsync();return Results.Redirect("/");});
 app.Use(async (ctx,next) => {
-    if(ctx.Request.Path.StartsWithSegments("/dashboard") && !(ctx.User.Identity?.IsAuthenticated==true && ctx.User.IsInRole("Admin"))) {ctx.Response.Redirect("/login");return;}
+    if(ctx.Request.Path.StartsWithSegments("/dashboard") && !(ctx.User.Identity?.IsAuthenticated==true && ctx.User.IsInRole("Admin"))) {ctx.Response.Redirect(ctx.User.Identity?.IsAuthenticated==true?"/":"/login?returnUrl="+Uri.EscapeDataString(ctx.Request.Path+ctx.Request.QueryString));return;}
     await next();
 });
 
@@ -104,18 +110,19 @@ app.MapStaticAssets();
 app.UseAntiforgery();
 app.MapRazorComponents<AlManassa.Web.Components.App>().AddInteractiveServerRenderMode();
 app.Run();
-static string AuthPage(string title,string action,string token) {
+static string AuthPage(string title,string action,string token,string returnUrl="") {
     var heading=WebUtility.HtmlEncode(title);
     var endpoint=action=="/register"?"/register":"/login";
     var passwordAutocomplete=endpoint=="/login"?"current-password":"new-password";
     var passwordMinimum=endpoint=="/login"?"1":"12";
     var switchLink=endpoint=="/login"?"/register":"/login";
-    var switchText=endpoint=="/login"?"إنشاء حساب جديد":"لديك حساب بالفعل؟";
+    var switchText=endpoint=="/login"?"إنشاء حساب طالب جديد":"لديك حساب بالفعل؟";
+    var safeReturn=returnUrl.StartsWith("/") && !returnUrl.StartsWith("//") && !returnUrl.Contains("\\") ? returnUrl : "/";
     return "<!doctype html><html lang='ar' dir='rtl'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>"+heading+
         " | المنصة</title><style>body{margin:0;background:#edf3fb;color:#183b69;font-family:Tahoma,Arial;display:grid;min-height:100vh;place-items:center}main{width:min(390px,90vw);background:white;padding:34px;border-radius:22px;box-shadow:0 15px 45px #11143d22}label{display:block;margin:18px 0 7px}input{box-sizing:border-box;width:100%;padding:13px;border:1px solid #d4d5e2;border-radius:10px}button{width:100%;margin-top:22px;background:#254e7e;color:#ffd96d;padding:15px;border:0;border-radius:10px;font-size:16px}a{color:#db8900}</style></head><body><main><h1>"+heading+
         "</h1><p>المنصة · Al-Manassa</p><form method='post' action='"+endpoint+"'><input type='hidden' name='__RequestVerificationToken' value='"+WebUtility.HtmlEncode(token)+
         "'><label>البريد الإلكتروني</label><input name='email' type='email' autocomplete='email' required maxlength='320'><label>كلمة المرور</label><input name='password' type='password' autocomplete='"+passwordAutocomplete+"' required minlength='"+passwordMinimum+
-        "'><button type='submit'>"+heading+"</button></form><p><a href='"+switchLink+"'>"+switchText+"</a></p><p><a href='/'>العودة للرئيسية</a></p></main></body></html>";
+        "'>"+(endpoint=="/login"?"<label style='display:flex;align-items:center;gap:8px'><input type='checkbox' name='remember' style='width:auto' checked> تذكرني لمدة 30 يومًا</label>":"")+"<button type='submit'>"+heading+"</button></form><p><a href='"+switchLink+"'>"+switchText+"</a></p><p><a href='/'>العودة للرئيسية</a></p></main></body></html>";
 }
 
 record CurriculumInput(string Topic,string Level,string Language,int DurationWeeks);
