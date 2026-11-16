@@ -225,7 +225,11 @@ public sealed class CourseStore(IConfiguration config)
               verification_code uuid NOT NULL UNIQUE,
               UNIQUE(user_id,course_id)
             );
-            INSERT INTO subjects(slug,name_ar,name_en,icon,sort_order) VALUES
+            -- Bootstrap the default categories only for a genuinely empty subjects table.
+            -- Never recreate categories removed by an administrator on later deployments.
+            INSERT INTO subjects(slug,name_ar,name_en,icon,sort_order)
+            SELECT seed.slug,seed.name_ar,seed.name_en,seed.icon,seed.sort_order
+            FROM (VALUES
             ('Programming','البرمجة وتطوير التطبيقات','Programming','⌘',1),
             ('Technology','الذكاء الاصطناعي','Artificial Intelligence','✦',2),
             ('Business','إدارة الأعمال','Business','◈',3),
@@ -238,6 +242,8 @@ public sealed class CourseStore(IConfiguration config)
             ('Health','الصحة والطب','Health','✚',10),
             ('Data','تحليل البيانات','Data Analytics','▥',11),
             ('Skills','المهارات الشخصية','Personal Skills','✧',12)
+            ) AS seed(slug,name_ar,name_en,icon,sort_order)
+            WHERE NOT EXISTS (SELECT 1 FROM subjects)
             ON CONFLICT(slug) DO NOTHING;
             INSERT INTO learning_paths(code,title_ar,title_en,description_ar,description_en,link_url,sort_order) VALUES
             ('SHORT COURSES','الدورات القصيرة','Short Courses','مهارات محددة بخطة تعليمية مرنة.','Flexible short courses','#courses',1),
