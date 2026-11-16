@@ -54,6 +54,32 @@ public sealed class ContentEditor(IConfiguration config) {
   sanitizer.AllowedAttributes.Clear();
   return sanitizer.Sanitize(html);
  }
+ public async Task AddCourseLessonAsync(Guid courseId,string title,string content){
+  if(string.IsNullOrWhiteSpace(title)||title.Length>250||string.IsNullOrWhiteSpace(content)||content.Length>30000)throw new ArgumentException("Invalid lesson");
+  await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
+  await using var tx=await db.BeginTransactionAsync();
+  Guid stageId;
+  await using(var find=new NpgsqlCommand("SELECT id FROM course_stages WHERE course_id=@course ORDER BY position LIMIT 1 FOR UPDATE",db,tx)){
+   find.Parameters.AddWithValue("course",courseId);
+   var existing=await find.ExecuteScalarAsync();
+   if(existing is Guid id)stageId=id;
+   else {
+    stageId=Guid.NewGuid();
+    await using var create=new NpgsqlCommand("INSERT INTO course_stages(id,course_id,title_ar,position,passing_percent) SELECT @id,@course,'دروس الكورس',1,70 WHERE EXISTS(SELECT 1 FROM courses WHERE id=@course)",db,tx);
+    create.Parameters.AddWithValue("id",stageId);create.Parameters.AddWithValue("course",courseId);
+    if(await create.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Course not found");
+   }
+  }
+  await using(var cmd=new NpgsqlCommand("""
+   INSERT INTO stage_lessons(id,stage_id,title_ar,content,position)
+   VALUES(@id,@stage,@title,@content,COALESCE((SELECT MAX(position)+1 FROM stage_lessons WHERE stage_id=@stage),1))
+   """,db,tx)){
+   cmd.Parameters.AddWithValue("id",Guid.NewGuid());cmd.Parameters.AddWithValue("stage",stageId);
+   cmd.Parameters.AddWithValue("title",title.Trim());cmd.Parameters.AddWithValue("content",CleanLessonHtml(content.Trim()));
+   await cmd.ExecuteNonQueryAsync();
+  }
+  await tx.CommitAsync();
+ }
  public async Task AddLessonAsync(Guid stageId,string title,string content){
   if(string.IsNullOrWhiteSpace(title)||title.Length>250||string.IsNullOrWhiteSpace(content)||content.Length>30000)throw new ArgumentException("Invalid lesson");
   await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
@@ -96,7 +122,7 @@ public sealed class ContentEditor(IConfiguration config) {
   if(string.IsNullOrWhiteSpace(title)||title.Length>250||string.IsNullOrWhiteSpace(content)||content.Length>30000)throw new ArgumentException("Invalid lesson");
   await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
   await using var cmd=new NpgsqlCommand("UPDATE stage_lessons SET title_ar=@title,content=@content WHERE id=@id",db);
-  cmd.Parameters.AddWithValue("title",title.Trim());cmd.Parameters.AddWithValue("content",content.Trim());cmd.Parameters.AddWithValue("id",id);
+  cmd.Parameters.AddWithValue("title",title.Trim());cmd.Parameters.AddWithValue("content",CleanLessonHtml(content.Trim()));cmd.Parameters.AddWithValue("id",id);
   if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Lesson not found");
  }
 
