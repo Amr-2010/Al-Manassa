@@ -46,7 +46,17 @@
  <button disabled="@(finalAnswers.Count!=20)" @onclick="SubmitFinal">تسليم الامتحان النهائي</button>
  }else{<button @onclick="LoadFinal">فتح الامتحان النهائي</button>}
  </section>
- @if(certificate is not null){<section class="learning-certificate"><h2>شهادة إتمام الدورة</h2><p>@certificate.CourseTitle</p><p>@certificate.StudentEmail</p><p>تاريخ الإصدار: @certificate.IssuedAt.ToString("yyyy-MM-dd")</p><strong>رمز التحقق: @certificate.Code</strong><p><a href="@($"/verify/{certificate.Code}")">التحقق من الشهادة</a></p><button onclick="window.print()">طباعة / حفظ PDF</button></section>}
+ @if(certificate is not null){<section class="learning-certificate certificate-official" id="certificate" style="background:#08244a;color:#fff;border:9px double #ffbf36;border-radius:18px;text-align:center;padding:42px 20px;margin:30px auto;max-width:900px">
+ <img src="/Al-Manassa%20Media%20Logo.png" alt="شعار المنصة" style="max-width:190px;max-height:105px;object-fit:contain" />
+ <h2 style="color:#ffc344;font-size:34px">شهادة إتمام دورة تدريبية</h2>
+ <p>تشهد منصة Al-Manassa بأن</p><h3 style="font-size:28px;color:#ffdc7d">@certificate.StudentEmail</h3>
+ <p>قد أتم بنجاح متطلبات الدورة التدريبية</p><h3 style="font-size:26px">@certificate.CourseTitle</h3>
+ <p>واجتاز الاختبار النهائي وفق معايير المنصة</p>
+ <p>تاريخ الإصدار: @certificate.IssuedAt.ToString("yyyy-MM-dd")</p>
+ <p style="font-size:12px">رقم التحقق: @certificate.Code</p>
+ <p><a style="color:#ffdc7d" href="@($"/verify/{certificate.Code}")">التحقق من صحة الشهادة</a></p>
+ <button class="certificate-print" onclick="window.print()">طباعة / حفظ الشهادة PDF</button>
+ </section>}
  }
  </main>
 </div>
