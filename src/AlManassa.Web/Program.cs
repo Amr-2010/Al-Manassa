@@ -67,6 +67,17 @@ using (var scope=app.Services.CreateScope()) {
 }
 app.UseAuthentication();
 app.UseAuthorization();
+app.Use(async (ctx,next)=>{
+ if(ctx.User.Identity?.IsAuthenticated==true && Guid.TryParse(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier),out var id)
+    && !ctx.Request.Path.StartsWithSegments("/_framework")
+    && !ctx.Request.Path.StartsWithSegments("/health")
+    && !ctx.Request.Path.StartsWithSegments("/api/lesson-assets")){
+  try{await ctx.RequestServices.GetRequiredService<AuthStore>().RecordActivityAsync(id);}
+  catch(Exception ex){app.Logger.LogWarning("Activity update unavailable: {Type}",ex.GetType().Name);}
+ }
+ await next();
+});
+
 app.UseStaticFiles();
 app.MapGet("/login", (HttpContext ctx, IAntiforgery af) => {
     if(ctx.User.Identity?.IsAuthenticated==true) return Results.Redirect(ctx.User.IsInRole("Admin")?"/dashboard":"/");
