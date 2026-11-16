@@ -52,8 +52,8 @@ app.MapPost("/api/admin/ai/curriculum", async (HttpContext ctx, CurriculumInput 
 // Bootstrap only the dedicated Al-Manassa schema. SQL uses IF NOT EXISTS and ON CONFLICT DO NOTHING.
 using (var scope=app.Services.CreateScope()) {
     try {
-        await scope.ServiceProvider.GetRequiredService<CourseStore>().EnsureDemoSchemaAsync();
         await scope.ServiceProvider.GetRequiredService<AuthStore>().EnsureAsync();
+        await scope.ServiceProvider.GetRequiredService<CourseStore>().EnsureDemoSchemaAsync();
         app.Logger.LogInformation("Al-Manassa database schema ready");
     } catch (Exception ex) {
         app.Logger.LogError("Al-Manassa database initialization failed ({ErrorType})",ex.GetType().Name);
