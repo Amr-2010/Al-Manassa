@@ -53,11 +53,9 @@ public sealed class ContentEditor(IConfiguration config) {
    INSERT INTO stage_lessons(id,stage_id,title_ar,content,position)
    SELECT @id,@stage,@title,@content,COALESCE((SELECT MAX(l.position)+1 FROM stage_lessons l WHERE l.stage_id=@stage),1)
    WHERE EXISTS(SELECT 1 FROM course_stages WHERE id=@stage)
-     AND (SELECT COUNT(*) FROM stage_lessons l JOIN course_stages s ON s.id=l.stage_id
-          WHERE s.course_id=(SELECT course_id FROM course_stages WHERE id=@stage)) < 10
    """,db);
   cmd.Parameters.AddWithValue("id",Guid.NewGuid());cmd.Parameters.AddWithValue("stage",stageId);cmd.Parameters.AddWithValue("title",title.Trim());cmd.Parameters.AddWithValue("content",content.Trim());
-  if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Stage not found or the course already has 10 lessons");
+  if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Stage not found");
  }
  public async Task<List<(Guid Id,Guid CourseId,string Title,int Position)>> StagesAsync(){
   await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
