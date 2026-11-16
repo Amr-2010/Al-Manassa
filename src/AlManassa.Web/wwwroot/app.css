@@ -92,3 +92,36 @@ button:hover,.panel button:hover{background:var(--brand-navy-light)}
 .join-banner a{background:#ffc34c;color:#173b69;text-decoration:none;padding:16px 24px;border-radius:12px;font-weight:bold;white-space:nowrap}
 @media(max-width:1050px){.subject-grid{grid-template-columns:repeat(3,1fr)}.path-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:650px){.subject-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.subject-tile{padding:15px;min-height:140px}.path-grid{grid-template-columns:1fr}.join-banner{display:block}.join-banner a{display:inline-block;margin-top:15px}.catalog-section,.learning-paths{margin:35px 0}}
+
+
+/* Al-Manassa official dark-navy and luminous-gold identity */
+:root{--brand-navy:#071f42;--brand-navy-light:#123968;--brand-orange:#ff9c0c;--brand-gold:#ffc629;--brand-deep:#081e3c;--brand-paper:#f5f8fc}
+.site-header{border-bottom:3px solid #ffbc26}
+.site-header .brand,.site-nav a{color:#081f43}
+.brand-icon{background:linear-gradient(145deg,#ffe36a,#ffa600 58%,#ee6500);border:3px solid #082448}
+.hero,.hero-new{background:linear-gradient(115deg,#051b3b,#0b2b56 65%,#174778);color:white}
+.hero-new .eyebrow{color:#ffcf47!important}
+.course-cover{background:linear-gradient(135deg,#071c3b,#154274 68%,#f9a414)}
+.sidebar{background:linear-gradient(180deg,#071d3e,#123d71)}
+.cta-section{background:#081f42}
+#almanassa-splash{background:linear-gradient(145deg,#041b3b,#0b315f);color:#ffd24e}
+#almanassa-splash .splash-spinner{border-top-color:#ffcc35}
+.learning-page{min-height:100vh;background:#f3f7fc;color:#0a2c53}
+.learning-page main{max-width:1100px;margin:auto;padding:35px 20px}
+.learning-header{display:flex;justify-content:space-between;align-items:center;background:#071e40;color:#ffd24e;padding:18px 6%}
+.learning-header a{color:#ffd24e;text-decoration:none;font-size:22px;font-weight:bold}
+.learning-stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:24px 0}
+.learning-stage{display:flex;justify-content:space-between;gap:10px;flex-direction:column;align-items:flex-start;border-radius:14px;padding:20px;background:#123c6d;color:white;text-align:right}
+.learning-stage.completed{background:#17664c}
+.learning-stage span{font-size:12px;color:#ffda6b}
+.learning-panel,.learning-certificate{background:#fff;border:1px solid #dae5f1;border-radius:20px;padding:28px;margin:24px 0;box-shadow:0 8px 28px #09264b10}
+.learning-lesson{border-bottom:1px solid #e5edf6;padding:16px 0}
+.learning-lesson p{line-height:1.9;white-space:pre-line}
+.learning-video{width:100%;max-width:760px;aspect-ratio:16/9;border:0;border-radius:12px;background:#081f42;display:block;margin:18px 0}
+.learning-question{border:1px solid #dbe5f1;border-radius:12px;padding:16px;margin:15px 0}
+.learning-question legend{font-weight:bold;padding:0 8px}
+.learning-question label{display:block;margin:12px 0;cursor:pointer}
+.learning-notice{background:#fff4d5;border:1px solid #e9bf55;border-radius:12px;padding:16px;margin:20px 0}
+.learning-certificate{border:3px double #d8a02b;text-align:center}
+.learning-certificate h2{color:#0a3262}
+@media print{.learning-header,.learning-stages,.learning-panel,.learning-certificate button{display:none!important}.learning-certificate{display:block!important;box-shadow:none}}
