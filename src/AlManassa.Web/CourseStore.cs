@@ -30,4 +30,17 @@ public sealed class CourseStore(IConfiguration config)
         await r.ReadAsync(ct);
         return (r.GetInt64(0),r.GetInt64(1));
     }
+    public async Task SaveSuggestionAsync(Guid id,string topic,string level,string language,int weeks,string json,string provider,CancellationToken ct=default) {
+        await using var conn=new NpgsqlConnection(ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("insert into curriculum_suggestions(id,topic,level,language,duration_weeks,content_json,provider,status) values (@id,@topic,@level,@lang,@weeks,cast(@json as jsonb),@provider,'PendingReview')",conn);
+        cmd.Parameters.AddWithValue("id",id);cmd.Parameters.AddWithValue("topic",topic);cmd.Parameters.AddWithValue("level",level);cmd.Parameters.AddWithValue("lang",language);cmd.Parameters.AddWithValue("weeks",weeks);cmd.Parameters.AddWithValue("json",json);cmd.Parameters.AddWithValue("provider",provider);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+    public async Task<long> SuggestionCountAsync(CancellationToken ct=default) {
+        await using var conn=new NpgsqlConnection(ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("select count(*) from curriculum_suggestions",conn);
+        return (long)(await cmd.ExecuteScalarAsync(ct) ?? 0L);
+    }
 }
