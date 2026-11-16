@@ -10,6 +10,34 @@
  <h1>مراجعة وتعديل المحتوى</h1>
  <p>التعديلات تحفظ مباشرة في PostgreSQL. تحقق من الفيديو وصلاحية تضمينه قبل الموافقة.</p>
  @if(message is not null){<p role="status">@message</p>}
+
+ <section class="panel" style="padding:24px;margin:24px 0">
+ <h2>إدارة الدورات بالكامل</h2><p>إنشاء وتعديل ونشر وإلغاء نشر الدورات. الحذف ممنوع للدورات التي تحتوي مراحل أو تسجيلات حفاظًا على بيانات الطلاب.</p>
+ <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
+ <label>العنوان بالعربية<input style="width:100%" @bind="courseAr" /></label>
+ <label>العنوان بالإنجليزية<input style="width:100%" @bind="courseEn" /></label>
+ <label>التخصص<input style="width:100%" @bind="courseCategory" /></label>
+ <label>المدة بالأسابيع<input type="number" min="1" max="52" style="width:100%" @bind="courseWeeks" /></label>
+ </div>
+ <label>وصف الدورة<textarea style="width:100%;min-height:90px" @bind="courseDescription"></textarea></label>
+ <label><input type="checkbox" @bind="coursePublished" /> منشورة</label>
+ <button @onclick="SaveCourse">@(editingCourse.HasValue?"حفظ تعديل الدورة":"إضافة دورة")</button>
+ <button @onclick="ResetCourse">دورة جديدة</button>
+ <table style="width:100%;margin-top:18px"><thead><tr><th>الدورة</th><th>التخصص</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>
+ @foreach(var c in courses){<tr><td>@c.TitleAr</td><td>@c.Category</td><td>@(c.Published?"منشورة":"مسودة")</td><td><button @onclick="()=>EditCourse(c)">تعديل</button><button @onclick="()=>ToggleCourse(c)">@(c.Published?"إلغاء النشر":"نشر")</button><button @onclick="()=>DeleteCourse(c.Id)">حذف إن كانت فارغة</button></td></tr>}
+ </tbody></table>
+ </section>
+ <section class="panel" style="padding:24px;margin:24px 0">
+ <h2>إدارة المراحل وإضافة الدروس</h2>
+ <label>اختر الدورة<select @bind="selectedCourse"><option value="">اختر الدورة</option>@foreach(var c in courses){<option value="@c.Id">@c.TitleAr</option>}</select></label>
+ <label>عنوان المرحلة الجديدة<input @bind="newStageTitle" /></label><button @onclick="AddStage">إضافة مرحلة</button>
+ @foreach(var st in stages.Where(x=>x.CourseId==selectedCourse)){
+ <details style="margin:12px 0;padding:12px;border:1px solid #ccd6e5;border-radius:10px"><summary>@st.Position — @st.Title</summary>
+ <input value="@st.Title" @onchange="e=>stageTitles[st.Id]=e.Value?.ToString()??string.Empty" /><button @onclick="()=>RenameStage(st.Id,st.Title)">تعديل اسم المرحلة</button>
+ <p>إضافة درس إلى المرحلة:</p><input placeholder="عنوان الدرس" @bind="newLessonTitle" /><textarea style="display:block;width:100%;min-height:90px" placeholder="المحتوى التعليمي" @bind="newLessonContent"></textarea><button @onclick="()=>AddLesson(st.Id)">إضافة الدرس</button>
+ </details>
+ }
+ </section>
  <h2>الدروس (@lessons.Count)</h2>
  @foreach(var lesson in lessons){
  <details style="border:1px solid #d6dbe5;border-radius:12px;padding:16px;margin:12px 0">
@@ -18,7 +46,7 @@
   <input style="display:block;width:100%;padding:10px;margin:8px 0" value="@lesson.Title" @onchange="e => UpdateTitle(lesson.Id, e.Value?.ToString() ?? string.Empty)" />
   <label>محتوى الدرس</label>
   <textarea style="display:block;width:100%;min-height:160px;padding:10px;margin:8px 0" @onchange="e => UpdateBody(lesson.Id, e.Value?.ToString() ?? string.Empty)">@lesson.Content</textarea>
-  <button @onclick="()=>SaveLesson(lesson.Id)">حفظ التعديلات</button>
+  <button @onclick="()=>SaveLesson(lesson.Id)">حفظ التعديلات</button> <button @onclick="()=>DeleteLesson(lesson.Id)">حذف الدرس إذا لم يُستكمل</button>
  </details>
  }
  <h2>مقترحات الفيديو (@videos.Count)</h2>
@@ -35,12 +63,25 @@
  }
 </main>
 @code {
+ List<ContentEditor.AdminCourse> courses=new();
+ List<(Guid Id,Guid CourseId,string Title,int Position)> stages=new();
+ Guid? editingCourse;Guid selectedCourse;string courseAr="",courseEn="",courseDescription="",courseCategory="General",newStageTitle="",newLessonTitle="",newLessonContent="";int courseWeeks=4;bool coursePublished;
+ Dictionary<Guid,string> stageTitles=new();
+ void ResetCourse(){editingCourse=null;courseAr="";courseEn="";courseDescription="";courseCategory="General";courseWeeks=4;coursePublished=false;}
+ void EditCourse(ContentEditor.AdminCourse c){editingCourse=c.Id;courseAr=c.TitleAr;courseEn=c.TitleEn;courseDescription=c.Description;courseCategory=c.Category;courseWeeks=c.DurationWeeks;coursePublished=c.Published;}
+ async Task SaveCourse(){try{await Editor.SaveCourseAsync(editingCourse,courseAr,courseEn,courseDescription,courseCategory,courseWeeks,coursePublished);message="تم حفظ الدورة";ResetCourse();await Reload();}catch(Exception){message="تعذر حفظ الدورة؛ راجع البيانات";}}
+ async Task ToggleCourse(ContentEditor.AdminCourse c){try{await Editor.SaveCourseAsync(c.Id,c.TitleAr,c.TitleEn,c.Description,c.Category,c.DurationWeeks,!c.Published);message="تم تحديث حالة النشر";await Reload();}catch(Exception){message="تعذر تحديث النشر";}}
+ async Task DeleteCourse(Guid id){try{await Editor.DeleteCourseAsync(id);message="تم حذف الدورة الفارغة";await Reload();}catch(Exception){message="لا يمكن حذف دورة بها مراحل أو تسجيلات؛ ألغِ نشرها بدلًا من ذلك";}}
+ async Task AddStage(){try{await Editor.AddStageAsync(selectedCourse,newStageTitle);newStageTitle="";message="تمت إضافة المرحلة";await Reload();}catch(Exception){message="اختر دورة وعنوان مرحلة صحيحًا";}}
+ async Task RenameStage(Guid id,string current){try{await Editor.RenameStageAsync(id,stageTitles.GetValueOrDefault(id,current));message="تم تحديث المرحلة";await Reload();}catch(Exception){message="تعذر تعديل المرحلة";}}
+ async Task AddLesson(Guid id){try{await Editor.AddLessonAsync(id,newLessonTitle,newLessonContent);newLessonTitle="";newLessonContent="";message="تمت إضافة الدرس";await Reload();}catch(Exception){message="تعذر إضافة الدرس";}}
+ async Task DeleteLesson(Guid id){try{await Editor.DeleteLessonAsync(id);message="تم حذف الدرس";await Reload();}catch(Exception){message="تعذر حذف الدرس لأنه مكتمل لدى طالب أو مرتبط ببيانات أخرى";}}
  List<AdminLesson> lessons=new();
  List<AdminVideo> videos=new();
  Dictionary<Guid,string> titles=new(),bodies=new(),videoIds=new();
  string? message;
  protected override async Task OnInitializedAsync()=>await Reload();
- async Task Reload(){try{lessons=await Editor.LessonsAsync();videos=await Editor.VideosAsync();}catch(Exception){message="تعذر تحميل المحتوى من قاعدة البيانات";}}
+ async Task Reload(){try{courses=await Editor.CoursesAsync();stages=await Editor.StagesAsync();lessons=await Editor.LessonsAsync();videos=await Editor.VideosAsync();}catch(Exception){message="تعذر تحميل المحتوى من قاعدة البيانات";}}
  string VideoSearchUrl(string query) => "https://www.youtube.com/results?search_query=" + Uri.EscapeDataString(query);
  void UpdateTitle(Guid id,string s)=>titles[id]=s;
  void UpdateBody(Guid id,string s)=>bodies[id]=s;
