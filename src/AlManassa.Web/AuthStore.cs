@@ -18,6 +18,7 @@ public sealed class AuthStore(IConfiguration config) {
               password_hash text NOT NULL, role varchar(20) NOT NULL DEFAULT 'Student',
               created_at timestamptz NOT NULL DEFAULT now()
             );
+            ALTER TABLE app_users ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
             """,c)) await cmd.ExecuteNonQueryAsync();
         var email=config["ADMIN_EMAIL"]?.Trim().ToLowerInvariant();
         var password=config["ADMIN_PASSWORD"];
@@ -73,4 +74,27 @@ public sealed class AuthStore(IConfiguration config) {
         await using var cmd=new NpgsqlCommand("select count(*) from app_users where role='Student'",c);
         return (long)(await cmd.ExecuteScalarAsync()??0L);
     }
+    public async Task<(long Sections,long Courses,long Lessons,long Students,long CertifiedStudents,long OnlineStudents)> DashboardCountsAsync() {
+        await using var c=new NpgsqlConnection(ConnectionString);await c.OpenAsync();
+        await using var cmd=new NpgsqlCommand("""
+            SELECT
+             (SELECT count(*) FROM subjects WHERE active=true),
+             (SELECT count(*) FROM courses),
+             (SELECT count(*) FROM stage_lessons),
+             (SELECT count(*) FROM app_users WHERE role='Student'),
+             (SELECT count(DISTINCT user_id) FROM course_certificates),
+             (SELECT count(*) FROM app_users WHERE role='Student' AND last_seen_at >= now()-interval '5 minutes')
+            """,c);
+        await using var r=await cmd.ExecuteReaderAsync();await r.ReadAsync();
+        return (r.GetInt64(0),r.GetInt64(1),r.GetInt64(2),r.GetInt64(3),r.GetInt64(4),r.GetInt64(5));
+    }
+    public async Task RecordActivityAsync(Guid userId){
+        await using var c=new NpgsqlConnection(ConnectionString);await c.OpenAsync();
+        await using var cmd=new NpgsqlCommand("""
+            UPDATE app_users SET last_seen_at=now()
+            WHERE id=@id AND (last_seen_at IS NULL OR last_seen_at < now()-interval '60 seconds')
+            """,c);
+        cmd.Parameters.AddWithValue("id",userId);await cmd.ExecuteNonQueryAsync();
+    }
+
 }
