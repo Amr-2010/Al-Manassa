@@ -1,6 +1,8 @@
 using Npgsql;
 namespace AlManassa.Web;
 public record CourseItem(Guid Id,string TitleAr,string TitleEn,string Description,string Category,int DurationWeeks,bool Published);
+public record SubjectItem(string Name,string Key,string Icon);
+public record LearningPathItem(string Code,string Title,string Description,string Url);
 public sealed class CourseStore(IConfiguration config)
 {
     private string ConnectionString {
@@ -44,6 +46,20 @@ public sealed class CourseStore(IConfiguration config)
         return (long)(await cmd.ExecuteScalarAsync(ct) ?? 0L);
     }
 
+    public async Task<List<SubjectItem>> SubjectsAsync(CancellationToken ct=default) {
+        await using var conn=new NpgsqlConnection(ConnectionString);await conn.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("select name_ar,slug,icon from subjects where active=true order by sort_order,name_ar",conn);
+        await using var r=await cmd.ExecuteReaderAsync(ct);var list=new List<SubjectItem>();
+        while(await r.ReadAsync(ct)) list.Add(new(r.GetString(0),r.GetString(1),r.GetString(2)));
+        return list;
+    }
+    public async Task<List<LearningPathItem>> LearningPathsAsync(CancellationToken ct=default) {
+        await using var conn=new NpgsqlConnection(ConnectionString);await conn.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("select code,title_ar,description_ar,link_url from learning_paths where active=true order by sort_order",conn);
+        await using var r=await cmd.ExecuteReaderAsync(ct);var list=new List<LearningPathItem>();
+        while(await r.ReadAsync(ct)) list.Add(new(r.GetString(0),r.GetString(1),r.GetString(2),r.GetString(3)));
+        return list;
+    }
     public async Task EnsureDemoSchemaAsync(CancellationToken ct=default) {
         await using var conn=new NpgsqlConnection(ConnectionString);
         await conn.OpenAsync(ct);
@@ -70,6 +86,44 @@ public sealed class CourseStore(IConfiguration config)
               status varchar(30) NOT NULL DEFAULT 'PendingReview',
               created_at timestamptz NOT NULL DEFAULT now()
             );
+            CREATE TABLE IF NOT EXISTS subjects (
+              slug varchar(100) PRIMARY KEY,
+              name_ar varchar(200) NOT NULL,
+              name_en varchar(200) NOT NULL,
+              icon varchar(20) NOT NULL DEFAULT '◆',
+              sort_order integer NOT NULL DEFAULT 0,
+              active boolean NOT NULL DEFAULT true
+            );
+            CREATE TABLE IF NOT EXISTS learning_paths (
+              code varchar(60) PRIMARY KEY,
+              title_ar varchar(200) NOT NULL,
+              title_en varchar(200) NOT NULL,
+              description_ar text NOT NULL DEFAULT '',
+              description_en text NOT NULL DEFAULT '',
+              link_url varchar(500) NOT NULL DEFAULT '#courses',
+              sort_order integer NOT NULL DEFAULT 0,
+              active boolean NOT NULL DEFAULT true
+            );
+            INSERT INTO subjects(slug,name_ar,name_en,icon,sort_order) VALUES
+            ('Programming','البرمجة وتطوير التطبيقات','Programming','⌘',1),
+            ('Technology','الذكاء الاصطناعي','Artificial Intelligence','✦',2),
+            ('Business','إدارة الأعمال','Business','◈',3),
+            ('Cyber Security','الأمن السيبراني','Cyber Security','◇',4),
+            ('Design','التصميم والإبداع','Design','✳',5),
+            ('Marketing','التسويق الرقمي','Marketing','◎',6),
+            ('Languages','اللغات','Languages','文',7),
+            ('Science','العلوم والهندسة','Science','⚙',8),
+            ('Teaching','التعليم والتدريب','Teaching','✎',9),
+            ('Health','الصحة والطب','Health','✚',10),
+            ('Data','تحليل البيانات','Data Analytics','▥',11),
+            ('Skills','المهارات الشخصية','Personal Skills','✧',12)
+            ON CONFLICT(slug) DO NOTHING;
+            INSERT INTO learning_paths(code,title_ar,title_en,description_ar,description_en,link_url,sort_order) VALUES
+            ('SHORT COURSES','الدورات القصيرة','Short Courses','مهارات محددة بخطة تعليمية مرنة.','Flexible short courses','#courses',1),
+            ('EXPERT TRACKS','المسارات الاحترافية','Expert Tracks','سلسلة دورات مترابطة لتطوير خبرتك خطوة بخطوة.','Professional learning paths','#courses',2),
+            ('CERTIFICATES','الشهادات التعليمية','Certificates','تقييمات وشهادات بعد تفعيل النظام.','Certificates after activation','/register',3),
+            ('AI LEARNING','مناهج مقترحة بالذكاء الاصطناعي','AI Learning','مقترحات يراجعها فريق الإدارة قبل نشرها.','AI suggestions reviewed before publishing','/register',4)
+            ON CONFLICT(code) DO NOTHING;
             INSERT INTO courses(id,title_ar,title_en,description,category,duration_weeks,published) VALUES
             ('11111111-1111-4111-8111-111111111111','أساسيات الذكاء الاصطناعي','AI Fundamentals','تعرف على مفاهيم وتطبيقات الذكاء الاصطناعي.','Technology',8,true),
             ('22222222-2222-4222-8222-222222222222','تطوير تطبيقات .NET','Developing with .NET','تعلم تطوير تطبيقات حديثة باستخدام .NET.','Programming',6,true),
