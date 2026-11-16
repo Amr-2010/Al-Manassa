@@ -156,7 +156,7 @@ app.MapPost("/api/admin/stages/rename",async (HttpContext ctx,IAntiforgery af,Co
 app.MapPost("/api/admin/lessons/add",async (HttpContext ctx,IAntiforgery af,ContentEditor editor)=>{
  if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
  var f=await ctx.Request.ReadFormAsync();Guid? course=Guid.TryParse(f["course"],out var c)?c:null;
- try{await editor.AddLessonAsync(Guid.Parse(f["stage"].ToString()),f["title"].ToString(),f["content"].ToString());return Results.Redirect(AdminContentRedirect("تمت إضافة الدرس",course));}
+ try{await editor.AddCourseLessonAsync(course??Guid.Empty,f["title"].ToString(),f["content"].ToString());return Results.Redirect(AdminContentRedirect("تمت إضافة الدرس",course));}
  catch(Exception ex){return Results.Redirect(AdminContentRedirect("فشل إضافة الدرس: "+ex.Message,course));}
 }).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
 
