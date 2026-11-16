@@ -9,6 +9,7 @@ RUN dotnet publish src/AlManassa.Web/AlManassa.Web.csproj -c Release -o /app/pub
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app/publish .
+COPY database/003_sample_curricula.sql /app/database/003_sample_curricula.sql
 ENV ASPNETCORE_URLS=http://0.0.0.0:10000
 EXPOSE 10000
 ENTRYPOINT ["dotnet", "AlManassa.Web.dll"]
