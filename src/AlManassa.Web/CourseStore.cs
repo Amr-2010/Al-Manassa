@@ -1,7 +1,7 @@
 using Npgsql;
 namespace AlManassa.Web;
 public record CourseItem(Guid Id,string TitleAr,string TitleEn,string Description,string Category,int DurationWeeks,bool Published);
-public record SubjectItem(string Name,string Key,string Icon);
+public record SubjectItem(string Name,string Key,string Icon,bool Active=true);
 public record LearningPathItem(string Code,string Title,string Description,string Url);
 public sealed class CourseStore(IConfiguration config)
 {
@@ -63,9 +63,9 @@ public sealed class CourseStore(IConfiguration config)
 
     public async Task<List<SubjectItem>> AllSubjectsAsync(CancellationToken ct=default) {
         await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync(ct);
-        await using var cmd=new NpgsqlCommand("SELECT name_ar,slug,icon FROM subjects ORDER BY sort_order,name_ar",db);
+        await using var cmd=new NpgsqlCommand("SELECT name_ar,slug,icon,active FROM subjects ORDER BY sort_order,name_ar",db);
         var result=new List<SubjectItem>();await using var rd=await cmd.ExecuteReaderAsync(ct);
-        while(await rd.ReadAsync(ct)) result.Add(new(rd.GetString(0),rd.GetString(1),rd.GetString(2)));
+        while(await rd.ReadAsync(ct)) result.Add(new(rd.GetString(0),rd.GetString(1),rd.GetString(2),rd.GetBoolean(3)));
         return result;
     }
     public async Task SaveSubjectAsync(string slug,string name,string icon,CancellationToken ct=default) {
@@ -74,13 +74,24 @@ public sealed class CourseStore(IConfiguration config)
         await using var cmd=new NpgsqlCommand("INSERT INTO subjects(slug,name_ar,name_en,icon,sort_order,active) VALUES(@slug,@name,@name,@icon,(SELECT COALESCE(MAX(sort_order),0)+1 FROM subjects),true) ON CONFLICT(slug) DO UPDATE SET name_ar=EXCLUDED.name_ar,icon=EXCLUDED.icon,active=true",db);
         cmd.Parameters.AddWithValue("slug",slug.Trim());cmd.Parameters.AddWithValue("name",name.Trim());cmd.Parameters.AddWithValue("icon",icon.Trim());await cmd.ExecuteNonQueryAsync(ct);
     }
-    public async Task DeleteSubjectAsync(string slug,CancellationToken ct=default) {
+    public async Task<string> DeleteSubjectAsync(string slug,CancellationToken ct=default) {
         await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync(ct);
-        await using var cmd=new NpgsqlCommand("DELETE FROM subjects WHERE slug=@slug AND NOT EXISTS(SELECT 1 FROM courses WHERE category=@slug)",db);
-        cmd.Parameters.AddWithValue("slug",slug);
-        if(await cmd.ExecuteNonQueryAsync(ct)!=1)throw new InvalidOperationException("Category has courses. Move or delete courses first.");
+        await using var tx=await db.BeginTransactionAsync(ct);
+        await using var count=new NpgsqlCommand("SELECT COUNT(*) FROM courses WHERE category=@slug",db,tx);
+        count.Parameters.AddWithValue("slug",slug);
+        var linked=(long)(await count.ExecuteScalarAsync(ct)??0L);
+        if(linked>0) {
+            await using var hide=new NpgsqlCommand("UPDATE subjects SET active=false WHERE slug=@slug",db,tx);
+            hide.Parameters.AddWithValue("slug",slug);
+            if(await hide.ExecuteNonQueryAsync(ct)!=1)throw new InvalidOperationException("Category not found");
+        } else {
+            await using var delete=new NpgsqlCommand("DELETE FROM subjects WHERE slug=@slug",db,tx);
+            delete.Parameters.AddWithValue("slug",slug);
+            if(await delete.ExecuteNonQueryAsync(ct)!=1)throw new InvalidOperationException("Category not found");
+        }
+        await tx.CommitAsync(ct);
+        return linked>0?"تم إخفاء القسم لأنه مرتبط بدورات، مع الاحتفاظ بمحتوى الطلاب.":"تم حذف القسم نهائيًا.";
     }
-
     public async Task SeedCurriculaAsync(CancellationToken ct=default) {
         var path=Path.Combine(AppContext.BaseDirectory,"database","003_sample_curricula.sql");
         if(!File.Exists(path)) throw new FileNotFoundException("Curriculum SQL seed missing",path);
