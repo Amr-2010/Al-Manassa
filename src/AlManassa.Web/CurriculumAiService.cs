@@ -68,7 +68,7 @@ public sealed class CurriculumAiService(IConfiguration config,IHttpClientFactory
    }
    if(!response.IsSuccessStatusCode){
     var detail=await GetErrorAsync(response);
-    if((int)response.StatusCode==429)throw new InvalidOperationException("تم الوصول إلى حد الاستخدام المتاح لـ Gemini. حاول لاحقًا.");
+    if((int)response.StatusCode==429)throw new InvalidOperationException("رفض Gemini الطلب بسبب حدود المشروع أو النموذج (HTTP 429). التفاصيل: "+(detail.Length>500?detail[..500]:detail)+" — راجع Usage و Rate limits في Google AI Studio؛ قد تكون الحصة صفرًا حتى لو لم تستخدم المفتاح.");
     if((int)response.StatusCode==404)throw new InvalidOperationException("لا يوجد نموذج Gemini Flash متاح لهذا المفتاح. "+detail);
     if((int)response.StatusCode==403)throw new InvalidOperationException("المفتاح غير مصرح له باستخدام Gemini: "+detail);
     throw new InvalidOperationException("Gemini HTTP "+(int)response.StatusCode+": "+(detail.Length>300?detail[..300]:detail));
