@@ -59,8 +59,6 @@ using (var scope=app.Services.CreateScope()) {
     try {
         await scope.ServiceProvider.GetRequiredService<AuthStore>().EnsureAsync();
         await scope.ServiceProvider.GetRequiredService<CourseStore>().EnsureDemoSchemaAsync();
-        await scope.ServiceProvider.GetRequiredService<CourseStore>().SeedCurriculaAsync();
-        await scope.ServiceProvider.GetRequiredService<CourseStore>().SeedFinalExamsAsync();
         await scope.ServiceProvider.GetRequiredService<LessonMediaStore>().EnsureAsync();
         app.Logger.LogInformation("Al-Manassa database schema ready");
     } catch (Exception ex) {
