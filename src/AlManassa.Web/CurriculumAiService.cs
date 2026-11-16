@@ -17,18 +17,46 @@ public sealed class CurriculumAiService(IConfiguration config,IHttpClientFactory
   video_search_query should be a targeted YouTube search phrase; NEVER invent a video ID or URL.
   This is an editorial draft, not an accredited course. No automatic publication.
   """;
-  var model=config["GEMINI_MODEL"]??"gemini-2.5-flash";
+  var client=factory.CreateClient("gemini");
+  var configured=config["GEMINI_MODEL"];
+  var model=string.IsNullOrWhiteSpace(configured)?"gemini-2.5-flash":configured.Trim();
   if(!System.Text.RegularExpressions.Regex.IsMatch(model,@"^[a-zA-Z0-9._-]+$"))throw new InvalidOperationException("Invalid Gemini model");
-  using var req=new HttpRequestMessage(HttpMethod.Post,"https://generativelanguage.googleapis.com/v1beta/models/"+model+":generateContent");
-  req.Headers.Add("x-goog-api-key",key);
-  req.Content=JsonContent.Create(new {
-   contents=new[]{new{parts=new[]{new{text=prompt}}}},
-   generationConfig=new{responseMimeType="application/json",maxOutputTokens=16384}
-  });
-  using var response=await factory.CreateClient("gemini").SendAsync(req);
+  async Task<HttpResponseMessage> RequestAsync(string selectedModel){
+   using var request=new HttpRequestMessage(HttpMethod.Post,"https://generativelanguage.googleapis.com/v1beta/models/"+selectedModel+":generateContent");
+   request.Headers.Add("x-goog-api-key",key);
+   request.Content=JsonContent.Create(new {
+    contents=new[]{new{parts=new[]{new{text=prompt}}}},
+    generationConfig=new{responseMimeType="application/json",maxOutputTokens=16384}
+   });
+   return await client.SendAsync(request);
+  }
+  using var response=await RequestAsync(model);
   if(!response.IsSuccessStatusCode){
-   if((int)response.StatusCode==429)throw new InvalidOperationException("تم الوصول إلى حد الاستخدام المجاني لـ Gemini. حاول لاحقًا.");
-   throw new InvalidOperationException("Gemini API error: HTTP "+(int)response.StatusCode);
+   var errorBody=await response.Content.ReadAsStringAsync();
+   string detail="";
+   try{
+    using var errorJson=JsonDocument.Parse(errorBody);
+    detail=errorJson.RootElement.GetProperty("error").GetProperty("message").GetString()??"";
+   }catch(JsonException){}
+   if((int)response.StatusCode==429)throw new InvalidOperationException("تم الوصول إلى حد الاستخدام المتاح لـ Gemini. حاول لاحقًا.");
+   if((int)response.StatusCode==404){
+    using var listRequest=new HttpRequestMessage(HttpMethod.Get,"https://generativelanguage.googleapis.com/v1beta/models?pageSize=100");
+    listRequest.Headers.Add("x-goog-api-key",key);
+    using var listResponse=await client.SendAsync(listRequest);
+    if(listResponse.IsSuccessStatusCode){
+     using var available=JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+     var names=new List<string>();
+     if(available.RootElement.TryGetProperty("models",out var models)){
+      foreach(var item in models.EnumerateArray()){
+       if(item.TryGetProperty("supportedGenerationMethods",out var methods)&&methods.EnumerateArray().Any(x=>x.GetString()=="generateContent")
+        &&item.TryGetProperty("name",out var name))names.Add(name.GetString()!.Replace("models/",""));
+      }
+     }
+     var suggestion=names.FirstOrDefault(x=>x.Contains("flash",StringComparison.OrdinalIgnoreCase))??names.FirstOrDefault();
+     throw new InvalidOperationException("النموذج "+model+" غير متاح لهذا المفتاح. "+(suggestion is null?"لم تُرجع Google نموذجًا متاحًا.":"جرّب ضبط GEMINI_MODEL على "+suggestion)+" — "+detail);
+    }
+   }
+   throw new InvalidOperationException("Gemini HTTP "+(int)response.StatusCode+": "+(detail.Length>350?detail[..350]:detail));
   }
   using var outer=JsonDocument.Parse(await response.Content.ReadAsStringAsync());
   var raw=string.Concat(outer.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts").EnumerateArray().Select(x=>x.TryGetProperty("text",out var t)?t.GetString():""));
