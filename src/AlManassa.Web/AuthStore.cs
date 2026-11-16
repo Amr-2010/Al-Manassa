@@ -24,8 +24,8 @@ public sealed class AuthStore(IConfiguration config) {
         var password=config["ADMIN_PASSWORD"];
         if(string.IsNullOrWhiteSpace(email)||string.IsNullOrWhiteSpace(password)) return;
         await using var seed=new NpgsqlCommand("""
-            INSERT INTO app_users (id,email,password_hash,role) VALUES (@id,@email,@hash,'Admin')
-            ON CONFLICT(email) DO NOTHING
+            INSERT INTO app_users (id,email,password_hash,role) VALUES (@id,@email,@hash,'SuperAdmin')
+            ON CONFLICT(email) DO UPDATE SET role='SuperAdmin'
             """,c);
         seed.Parameters.AddWithValue("id",Guid.NewGuid());
         seed.Parameters.AddWithValue("email",email);
@@ -59,7 +59,7 @@ public sealed class AuthStore(IConfiguration config) {
         await using var r=await cmd.ExecuteReaderAsync();
         if(!await r.ReadAsync()) return null;
         var id=r.GetGuid(0);var hash=r.GetString(1);var role=r.GetString(2);
-        return email.Trim().Equals("admin",StringComparison.OrdinalIgnoreCase) && role!="Admin" ? null : (Verify(password,hash)?(id,role):null);
+        return email.Trim().Equals("admin",StringComparison.OrdinalIgnoreCase) && role!="SuperAdmin" ? null : (Verify(password,hash)?(id,role):null);
     }
     public async Task<bool> RegisterAsync(string email,string password) {
         await using var c=new NpgsqlConnection(ConnectionString);await c.OpenAsync();
@@ -68,6 +68,37 @@ public sealed class AuthStore(IConfiguration config) {
         cmd.Parameters.AddWithValue("email",email.Trim().ToLowerInvariant());
         cmd.Parameters.AddWithValue("hash",Hash(password));
         return await cmd.ExecuteNonQueryAsync()>0;
+    }
+    public sealed record ManagedUser(Guid Id,string Email,string Role,DateTime CreatedAt,DateTime? LastSeenAt);
+    public async Task<List<ManagedUser>> ListManagedAsync(){
+        await using var c=new NpgsqlConnection(ConnectionString);await c.OpenAsync();
+        await using var cmd=new NpgsqlCommand("select id,email,role,created_at,last_seen_at from app_users where role <> 'SuperAdmin' and email <> @owner order by created_at desc",c);
+        cmd.Parameters.AddWithValue("owner",config["ADMIN_EMAIL"]?.Trim().ToLowerInvariant()??"");
+        var list=new List<ManagedUser>();await using var r=await cmd.ExecuteReaderAsync();
+        while(await r.ReadAsync())list.Add(new ManagedUser(r.GetGuid(0),r.GetString(1),r.GetString(2),r.GetDateTime(3),r.IsDBNull(4)?null:r.GetDateTime(4)));
+        return list;
+    }
+    public async Task CreateManagedAsync(string email,string password,string role){
+        email=email.Trim().ToLowerInvariant();
+        if(email.Length is <5 or >320 || !email.Contains('@') || password.Length is <12 or >128 || role is not ("Admin" or "Student"))throw new ArgumentException("بيانات المستخدم غير صالحة أو كلمة المرور أقل من 12 حرفًا");
+        if(email==(config["ADMIN_EMAIL"]?.Trim().ToLowerInvariant()))throw new InvalidOperationException("لا يمكن إنشاء حساب بنفس بريد المدير الرئيسي");
+        await using var c=new NpgsqlConnection(ConnectionString);await c.OpenAsync();
+        await using var cmd=new NpgsqlCommand("insert into app_users(id,email,password_hash,role) values (@id,@email,@hash,@role)",c);
+        cmd.Parameters.AddWithValue("id",Guid.NewGuid());cmd.Parameters.AddWithValue("email",email);cmd.Parameters.AddWithValue("hash",Hash(password));cmd.Parameters.AddWithValue("role",role);
+        await cmd.ExecuteNonQueryAsync();
+    }
+    public async Task ChangeManagedRoleAsync(Guid id,string role){
+        if(role is not ("Admin" or "Student"))throw new ArgumentException("الدور غير مسموح");
+        await using var c=new NpgsqlConnection(ConnectionString);await c.OpenAsync();
+        await using var cmd=new NpgsqlCommand("update app_users set role=@role where id=@id and role <> 'SuperAdmin' and email <> @owner",c);
+        cmd.Parameters.AddWithValue("role",role);cmd.Parameters.AddWithValue("id",id);cmd.Parameters.AddWithValue("owner",config["ADMIN_EMAIL"]?.Trim().ToLowerInvariant()??"");
+        if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("المستخدم غير موجود أو محمي");
+    }
+    public async Task DeleteManagedAsync(Guid id){
+        await using var c=new NpgsqlConnection(ConnectionString);await c.OpenAsync();
+        await using var cmd=new NpgsqlCommand("delete from app_users where id=@id and role <> 'SuperAdmin' and email <> @owner",c);
+        cmd.Parameters.AddWithValue("id",id);cmd.Parameters.AddWithValue("owner",config["ADMIN_EMAIL"]?.Trim().ToLowerInvariant()??"");
+        if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("تعذر حذف المستخدم؛ قد يكون مرتبطًا ببيانات تعليمية");
     }
     public async Task<long> CountStudentsAsync() {
         await using var c=new NpgsqlConnection(ConnectionString);await c.OpenAsync();
