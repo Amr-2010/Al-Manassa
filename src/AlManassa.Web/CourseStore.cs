@@ -104,6 +104,61 @@ public sealed class CourseStore(IConfiguration config)
               sort_order integer NOT NULL DEFAULT 0,
               active boolean NOT NULL DEFAULT true
             );
+            CREATE TABLE IF NOT EXISTS course_stages (
+              id uuid PRIMARY KEY, course_id uuid NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+              title_ar varchar(250) NOT NULL, position integer NOT NULL CHECK(position>0),
+              passing_percent integer NOT NULL DEFAULT 70 CHECK(passing_percent BETWEEN 1 AND 100),
+              UNIQUE(course_id,position)
+            );
+            CREATE TABLE IF NOT EXISTS stage_lessons (
+              id uuid PRIMARY KEY, stage_id uuid NOT NULL REFERENCES course_stages(id) ON DELETE CASCADE,
+              title_ar varchar(250) NOT NULL, content text NOT NULL DEFAULT '',
+              video_provider varchar(20), video_reference text, position integer NOT NULL,
+              UNIQUE(stage_id,position),
+              CHECK(video_provider IS NULL OR video_provider IN ('youtube','hosted'))
+            );
+            CREATE TABLE IF NOT EXISTS course_questions (
+              id uuid PRIMARY KEY, course_id uuid NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+              stage_id uuid REFERENCES course_stages(id) ON DELETE CASCADE,
+              prompt text NOT NULL, position integer NOT NULL,
+              is_final boolean NOT NULL DEFAULT false,
+              UNIQUE(course_id,stage_id,position)
+            );
+            CREATE TABLE IF NOT EXISTS question_options (
+              id uuid PRIMARY KEY, question_id uuid NOT NULL REFERENCES course_questions(id) ON DELETE CASCADE,
+              label text NOT NULL, is_correct boolean NOT NULL DEFAULT false
+            );
+            CREATE TABLE IF NOT EXISTS course_enrollments (
+              id uuid PRIMARY KEY, course_id uuid NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+              user_id uuid NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+              enrolled_at timestamptz NOT NULL DEFAULT now(), UNIQUE(course_id,user_id)
+            );
+            CREATE TABLE IF NOT EXISTS lesson_completions (
+              user_id uuid NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+              lesson_id uuid NOT NULL REFERENCES stage_lessons(id) ON DELETE CASCADE,
+              completed_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(user_id,lesson_id)
+            );
+            CREATE TABLE IF NOT EXISTS assessment_attempts (
+              id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+              course_id uuid NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+              stage_id uuid REFERENCES course_stages(id) ON DELETE CASCADE,
+              is_final boolean NOT NULL, score integer NOT NULL CHECK(score BETWEEN 0 AND 100),
+              passed boolean NOT NULL, submitted_at timestamptz NOT NULL DEFAULT now()
+            );
+            CREATE TABLE IF NOT EXISTS assessment_answers (
+              attempt_id uuid NOT NULL REFERENCES assessment_attempts(id) ON DELETE CASCADE,
+              question_id uuid NOT NULL REFERENCES course_questions(id) ON DELETE CASCADE,
+              option_id uuid NOT NULL REFERENCES question_options(id),
+              PRIMARY KEY(attempt_id,question_id)
+            );
+            CREATE TABLE IF NOT EXISTS course_certificates (
+              id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+              course_id uuid NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+              final_attempt_id uuid NOT NULL REFERENCES assessment_attempts(id),
+              issued_at timestamptz NOT NULL DEFAULT now(),
+              verification_code uuid NOT NULL UNIQUE,
+              UNIQUE(user_id,course_id)
+            );
             INSERT INTO subjects(slug,name_ar,name_en,icon,sort_order) VALUES
             ('Programming','البرمجة وتطوير التطبيقات','Programming','⌘',1),
             ('Technology','الذكاء الاصطناعي','Artificial Intelligence','✦',2),
