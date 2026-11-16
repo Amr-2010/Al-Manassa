@@ -99,13 +99,18 @@ app.MapStaticAssets();
 app.UseAntiforgery();
 app.MapRazorComponents<AlManassa.Web.Components.App>().AddInteractiveServerRenderMode();
 app.Run();
-static string AuthPage(string title,string action,string token) => $"""
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{title}} | المنصة</title><style>body{margin:0;background:#f8f7fc;color:#11143d;font-family:Tahoma,Arial;display:grid;min-height:100vh;place-items:center}main{width:min(390px,90vw);background:white;padding:34px;border-radius:22px;box-shadow:0 15px 45px #11143d22}h1{font-size:25px}label{display:block;margin:18px 0 7px}input{box-sizing:border-box;width:100%;padding:13px;border:1px solid #d4d5e2;border-radius:10px}button{width:100%;margin-top:22px;background:#10124d;color:white;padding:15px;border:0;border-radius:10px;font-size:16px}a{color:#c56c00}</style></head>
-<body><main><h1>{{title}}</h1><p>المنصة · Al-Manassa</p><form method="post" action="{{action}}"><input type="hidden" name="__RequestVerificationToken" value="{{token}}">
-<label>البريد الإلكتروني</label><input name="email" type="email" autocomplete="email" required maxlength="320">
-<label>كلمة المرور</label><input name="password" type="password" autocomplete="{{(action=="/login"?"current-password":"new-password")}}" required minlength="{{(action=="/login"?"1":"12")}}">
-<button type="submit">{{title}}</button></form><p><a href="{{(action=="/login"?"/register":"/login")}}">{{(action=="/login"?"إنشاء حساب جديد":"لديك حساب بالفعل؟")}}</a></p><p><a href="/">العودة للرئيسية</a></p></main></body></html>
-""";
+static string AuthPage(string title,string action,string token) {
+    var heading=WebUtility.HtmlEncode(title);
+    var endpoint=action=="/register"?"/register":"/login";
+    var passwordAutocomplete=endpoint=="/login"?"current-password":"new-password";
+    var passwordMinimum=endpoint=="/login"?"1":"12";
+    var switchLink=endpoint=="/login"?"/register":"/login";
+    var switchText=endpoint=="/login"?"إنشاء حساب جديد":"لديك حساب بالفعل؟";
+    return "<!doctype html><html lang='ar' dir='rtl'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>"+heading+
+        " | المنصة</title><style>body{margin:0;background:#f8f7fc;color:#11143d;font-family:Tahoma,Arial;display:grid;min-height:100vh;place-items:center}main{width:min(390px,90vw);background:white;padding:34px;border-radius:22px;box-shadow:0 15px 45px #11143d22}label{display:block;margin:18px 0 7px}input{box-sizing:border-box;width:100%;padding:13px;border:1px solid #d4d5e2;border-radius:10px}button{width:100%;margin-top:22px;background:#10124d;color:white;padding:15px;border:0;border-radius:10px;font-size:16px}a{color:#c56c00}</style></head><body><main><h1>"+heading+
+        "</h1><p>المنصة · Al-Manassa</p><form method='post' action='"+endpoint+"'><input type='hidden' name='__RequestVerificationToken' value='"+WebUtility.HtmlEncode(token)+
+        "'><label>البريد الإلكتروني</label><input name='email' type='email' autocomplete='email' required maxlength='320'><label>كلمة المرور</label><input name='password' type='password' autocomplete='"+passwordAutocomplete+"' required minlength='"+passwordMinimum+
+        "'><button type='submit'>"+heading+"</button></form><p><a href='"+switchLink+"'>"+switchText+"</a></p><p><a href='/'>العودة للرئيسية</a></p></main></body></html>";
+}
 
 record CurriculumInput(string Topic,string Level,string Language,int DurationWeeks);
