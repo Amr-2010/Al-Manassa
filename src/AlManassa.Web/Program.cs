@@ -15,6 +15,7 @@ builder.Services.AddScoped<CourseStore>();
 builder.Services.AddScoped<AuthStore>();
 builder.Services.AddScoped<LearningStore>();
 builder.Services.AddScoped<LessonMediaStore>();
+builder.Services.AddScoped<LessonVideoStore>();
 builder.Services.AddScoped<ContentEditor>();
 builder.Services.AddScoped<CurriculumAiService>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options => { options.LoginPath="/login"; options.Cookie.Name="AlManassa.Auth"; options.Cookie.HttpOnly=true; options.Cookie.SecurePolicy=CookieSecurePolicy.Always; options.Cookie.SameSite=SameSiteMode.Lax; options.ExpireTimeSpan=TimeSpan.FromDays(30); options.SlidingExpiration=true; options.Events.OnRedirectToLogin=context=>{context.Response.Redirect("/login?returnUrl="+Uri.EscapeDataString(context.Request.Path+context.Request.QueryString));return Task.CompletedTask;}; });
@@ -156,6 +157,25 @@ app.MapPost("/api/admin/lessons/add",async (HttpContext ctx,IAntiforgery af,Cont
  try{await editor.AddLessonAsync(Guid.Parse(f["stage"].ToString()),f["title"].ToString(),f["content"].ToString());return Results.Redirect(AdminContentRedirect("تمت إضافة الدرس",course));}
  catch(Exception ex){return Results.Redirect(AdminContentRedirect("فشل إضافة الدرس: "+ex.Message,course));}
 }).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
+
+app.MapPost("/api/admin/lessons/upload-video",async (HttpContext ctx,IAntiforgery af,LessonVideoStore videos)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();Guid? course=Guid.TryParse(f["course"],out var c)?c:null;
+ try{
+  var id=Guid.Parse(f["id"].ToString());var file=f.Files.GetFile("video")??throw new ArgumentException("Select a video file");
+  if(file.Length is <1 or >52428800)throw new ArgumentException("Video must be between 1 byte and 50 MB");
+  await using var stream=file.OpenReadStream();
+  await videos.SaveAsync(id,file.FileName,file.ContentType,stream,ctx.RequestAborted);
+  return Results.Redirect(AdminContentRedirect("تم رفع فيديو الدرس وحفظه",course));
+ }catch(Exception ex){return Results.Redirect(AdminContentRedirect("فشل رفع الفيديو: "+ex.Message,course));}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"}).DisableAntiforgery();
+app.MapGet("/api/lessons/{id:guid}/video",async (Guid id,HttpContext ctx,LessonVideoStore videos)=>{
+ if(ctx.User.Identity?.IsAuthenticated!=true)return Results.Unauthorized();
+ var admin=ctx.User.IsInRole("Admin");
+ if(!Guid.TryParse(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier),out var userId))return Results.Unauthorized();
+ var file=await videos.GetAsync(id,userId,admin);
+ return file is null?Results.NotFound():Results.File(file.Value.Data,file.Value.Mime,enableRangeProcessing:true);
+}).RequireAuthorization();
 app.MapPost("/api/admin/lessons/save",async (HttpContext ctx,IAntiforgery af,ContentEditor editor)=>{
  if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
  var f=await ctx.Request.ReadFormAsync();Guid? course=Guid.TryParse(f["course"],out var c)?c:null;
