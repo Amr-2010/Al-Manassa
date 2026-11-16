@@ -13,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddScoped<CourseStore>();
 builder.Services.AddScoped<AuthStore>();
+builder.Services.AddScoped<LearningStore>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options => { options.LoginPath="/login"; options.Cookie.Name="AlManassa.Auth"; options.Cookie.HttpOnly=true; options.Cookie.SecurePolicy=CookieSecurePolicy.Always; options.Cookie.SameSite=SameSiteMode.Lax; options.ExpireTimeSpan=TimeSpan.FromHours(8); });
 builder.Services.AddAuthorization();
 builder.Services.AddAntiforgery();
