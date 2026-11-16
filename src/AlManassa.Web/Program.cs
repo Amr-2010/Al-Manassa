@@ -56,6 +56,7 @@ using (var scope=app.Services.CreateScope()) {
     try {
         await scope.ServiceProvider.GetRequiredService<AuthStore>().EnsureAsync();
         await scope.ServiceProvider.GetRequiredService<CourseStore>().EnsureDemoSchemaAsync();
+        await scope.ServiceProvider.GetRequiredService<CourseStore>().SeedCurriculaAsync();
         app.Logger.LogInformation("Al-Manassa database schema ready");
     } catch (Exception ex) {
         app.Logger.LogError("Al-Manassa database initialization failed ({ErrorType})",ex.GetType().Name);
