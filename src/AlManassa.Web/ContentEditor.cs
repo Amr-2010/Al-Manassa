@@ -49,9 +49,15 @@ public sealed class ContentEditor(IConfiguration config) {
  public async Task AddLessonAsync(Guid stageId,string title,string content){
   if(string.IsNullOrWhiteSpace(title)||title.Length>250||string.IsNullOrWhiteSpace(content)||content.Length>30000)throw new ArgumentException("Invalid lesson");
   await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
-  await using var cmd=new NpgsqlCommand("INSERT INTO stage_lessons(id,stage_id,title_ar,content,position) SELECT @id,@stage,@title,@content,COALESCE((SELECT MAX(position)+1 FROM stage_lessons WHERE stage_id=@stage),1) WHERE EXISTS(SELECT 1 FROM course_stages WHERE id=@stage)",db);
+  await using var cmd=new NpgsqlCommand("""
+   INSERT INTO stage_lessons(id,stage_id,title_ar,content,position)
+   SELECT @id,@stage,@title,@content,COALESCE((SELECT MAX(l.position)+1 FROM stage_lessons l WHERE l.stage_id=@stage),1)
+   WHERE EXISTS(SELECT 1 FROM course_stages WHERE id=@stage)
+     AND (SELECT COUNT(*) FROM stage_lessons l JOIN course_stages s ON s.id=l.stage_id
+          WHERE s.course_id=(SELECT course_id FROM course_stages WHERE id=@stage)) < 10
+   """,db);
   cmd.Parameters.AddWithValue("id",Guid.NewGuid());cmd.Parameters.AddWithValue("stage",stageId);cmd.Parameters.AddWithValue("title",title.Trim());cmd.Parameters.AddWithValue("content",content.Trim());
-  if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Stage not found");
+  if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Stage not found or the course already has 10 lessons");
  }
  public async Task<List<(Guid Id,Guid CourseId,string Title,int Position)>> StagesAsync(){
   await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
@@ -85,6 +91,28 @@ public sealed class ContentEditor(IConfiguration config) {
   await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
   await using var cmd=new NpgsqlCommand("UPDATE stage_lessons SET title_ar=@title,content=@content WHERE id=@id",db);
   cmd.Parameters.AddWithValue("title",title.Trim());cmd.Parameters.AddWithValue("content",content.Trim());cmd.Parameters.AddWithValue("id",id);
+  if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Lesson not found");
+ }
+
+ public async Task SetLessonYoutubeAsync(Guid lessonId,string url) {
+  string? videoId=null;
+  if(!string.IsNullOrWhiteSpace(url)){
+   if(!Uri.TryCreate(url.Trim(),UriKind.Absolute,out var uri) || uri.Scheme!="https")
+    throw new ArgumentException("Use a valid HTTPS YouTube URL");
+   var host=uri.Host.ToLowerInvariant();
+   if(host=="youtu.be")videoId=uri.AbsolutePath.Trim('/').Split('/')[0];
+   else if(host is "youtube.com" or "www.youtube.com" or "m.youtube.com"){
+    if(uri.AbsolutePath.StartsWith("/shorts/") || uri.AbsolutePath.StartsWith("/embed/"))videoId=uri.AbsolutePath.Trim('/').Split('/').Last();
+    else if(uri.AbsolutePath=="/watch")videoId=uri.Query.TrimStart('?').Split('&').Select(x=>x.Split('=',2)).Where(x=>x.Length==2 && x[0]=="v").Select(x=>Uri.UnescapeDataString(x[1])).FirstOrDefault();
+   }
+   if(videoId is null || videoId.Length!=11 || !videoId.All(c=>char.IsAsciiLetterOrDigit(c)||c=='_'||c=='-'))
+    throw new ArgumentException("Invalid YouTube video URL");
+  }
+  await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
+  await using var cmd=new NpgsqlCommand("UPDATE stage_lessons SET video_provider=@provider,video_reference=@reference WHERE id=@id",db);
+  cmd.Parameters.AddWithValue("id",lessonId);
+  cmd.Parameters.AddWithValue("provider",videoId is null?DBNull.Value:(object)"youtube");
+  cmd.Parameters.AddWithValue("reference",videoId is null?DBNull.Value:(object)videoId);
   if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("Lesson not found");
  }
  public async Task<List<AdminVideo>> VideosAsync() {
