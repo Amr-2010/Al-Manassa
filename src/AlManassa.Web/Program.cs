@@ -107,6 +107,32 @@ app.Use(async (ctx,next) => {
     await next();
 });
 
+
+app.MapPost("/api/admin/subjects/save", async (HttpContext ctx, IAntiforgery af, CourseStore store) => {
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var form=await ctx.Request.ReadFormAsync();
+ var slug=form["slug"].ToString().Trim();
+ var name=form["name"].ToString().Trim();
+ var icon=form["icon"].ToString().Trim();
+ var description=form["description"].ToString().Trim();
+ try {
+  await store.SaveSubjectAsync(slug,name,icon,description);
+  return Results.Redirect("/dashboard/subjects?notice="+Uri.EscapeDataString("تم حفظ القسم بنجاح"));
+ }catch(Exception ex) {
+  return Results.Redirect("/dashboard/subjects?notice="+Uri.EscapeDataString("فشل الحفظ: "+ex.Message));
+ }
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
+app.MapPost("/api/admin/subjects/delete", async (HttpContext ctx, IAntiforgery af, CourseStore store) => {
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var form=await ctx.Request.ReadFormAsync();
+ var slug=form["slug"].ToString().Trim();
+ try {
+  var message=await store.DeleteSubjectAsync(slug);
+  return Results.Redirect("/dashboard/subjects?notice="+Uri.EscapeDataString(message));
+ }catch(Exception ex){
+  return Results.Redirect("/dashboard/subjects?notice="+Uri.EscapeDataString("فشل الحذف: "+ex.Message));
+ }
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="Admin"});
 app.MapGet("/api/lesson-assets/{id:guid}",async (Guid id,HttpContext ctx,LessonMediaStore media)=>{
  if(ctx.User.Identity?.IsAuthenticated!=true || !Guid.TryParse(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier),out var userId))return Results.Unauthorized();
  var item=await media.GetAsync(id,userId,ctx.User.IsInRole("Admin"));
