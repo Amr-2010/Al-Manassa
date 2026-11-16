@@ -23,6 +23,10 @@ public sealed class ContentEditor(IConfiguration config) {
  public async Task SaveCourseAsync(Guid? id,string ar,string en,string description,string category,int weeks,bool published){
   if(string.IsNullOrWhiteSpace(ar)||ar.Length>250||string.IsNullOrWhiteSpace(en)||en.Length>250||description.Length>10000||string.IsNullOrWhiteSpace(category)||category.Length>100||weeks is <1 or >52)throw new ArgumentException("Invalid course");
   await using var db=new NpgsqlConnection(Connection);await db.OpenAsync();
+  await using(var check=new NpgsqlCommand("SELECT EXISTS(SELECT 1 FROM subjects WHERE slug=@category AND active=true)",db)) {
+   check.Parameters.AddWithValue("category",category.Trim());
+   if(await check.ExecuteScalarAsync() is not true)throw new ArgumentException("Select an active subject");
+  }
   await using var cmd=new NpgsqlCommand(id.HasValue?
    "UPDATE courses SET title_ar=@ar,title_en=@en,description=@description,category=@category,duration_weeks=@weeks,published=@published WHERE id=@id":
    "INSERT INTO courses(id,title_ar,title_en,description,category,duration_weeks,published) VALUES(@id,@ar,@en,@description,@category,@weeks,@published)",db);
