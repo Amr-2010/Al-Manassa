@@ -21,7 +21,57 @@
       <input name="name" value="@(current?.Name??"")" maxlength="200" required placeholder="التسويق الرقمي" />
     </label>
     <label>رمز القسم
-      <input name="icon" value="@(current?.Icon??"◆")" maxlength="20" required placeholder="◆" />
+      <select name="icon" required aria-label="اختر رمز القسم">
+       <option value="⌘" selected="@(current?.Icon == "⌘")">⌘ — برمجة</option>
+       <option value="💻" selected="@(current?.Icon == "💻")">💻 — كمبيوتر</option>
+       <option value="📱" selected="@(current?.Icon == "📱")">📱 — تطبيقات</option>
+       <option value="🌐" selected="@(current?.Icon == "🌐")">🌐 — مواقع</option>
+       <option value="🤖" selected="@(current?.Icon == "🤖")">🤖 — ذكاء اصطناعي</option>
+       <option value="🧠" selected="@(current?.Icon == "🧠")">🧠 — تعلم آلي</option>
+       <option value="🔐" selected="@(current?.Icon == "🔐")">🔐 — أمن سيبراني</option>
+       <option value="🛡️" selected="@(current?.Icon == "🛡️")">🛡️ — حماية</option>
+       <option value="📊" selected="@(current?.Icon == "📊")">📊 — تحليل بيانات</option>
+       <option value="📈" selected="@(current?.Icon == "📈")">📈 — تسويق</option>
+       <option value="💼" selected="@(current?.Icon == "💼")">💼 — أعمال</option>
+       <option value="🏦" selected="@(current?.Icon == "🏦")">🏦 — مالية</option>
+       <option value="🎨" selected="@(current?.Icon == "🎨")">🎨 — تصميم</option>
+       <option value="📷" selected="@(current?.Icon == "📷")">📷 — تصوير</option>
+       <option value="🎬" selected="@(current?.Icon == "🎬")">🎬 — فيديو</option>
+       <option value="🎵" selected="@(current?.Icon == "🎵")">🎵 — موسيقى</option>
+       <option value="📚" selected="@(current?.Icon == "📚")">📚 — تعليم</option>
+       <option value="🎓" selected="@(current?.Icon == "🎓")">🎓 — شهادات</option>
+       <option value="📝" selected="@(current?.Icon == "📝")">📝 — كتابة</option>
+       <option value="🗣️" selected="@(current?.Icon == "🗣️")">🗣️ — لغات</option>
+       <option value="🌍" selected="@(current?.Icon == "🌍")">🌍 — جغرافيا</option>
+       <option value="🔬" selected="@(current?.Icon == "🔬")">🔬 — علوم</option>
+       <option value="⚙️" selected="@(current?.Icon == "⚙️")">⚙️ — هندسة</option>
+       <option value="🩺" selected="@(current?.Icon == "🩺")">🩺 — صحة</option>
+       <option value="🏋️" selected="@(current?.Icon == "🏋️")">🏋️ — رياضة</option>
+       <option value="🧩" selected="@(current?.Icon == "🧩")">🧩 — مهارات</option>
+       <option value="🚀" selected="@(current?.Icon == "🚀")">🚀 — تطوير</option>
+       <option value="🏠" selected="@(current?.Icon == "🏠")">🏠 — عقارات</option>
+       <option value="🚗" selected="@(current?.Icon == "🚗")">🚗 — سيارات</option>
+       <option value="🛒" selected="@(current?.Icon == "🛒")">🛒 — تجارة</option>
+       <option value="💡" selected="@(current?.Icon == "💡")">💡 — ابتكار</option>
+       <option value="📡" selected="@(current?.Icon == "📡")">📡 — شبكات</option>
+       <option value="☁️" selected="@(current?.Icon == "☁️")">☁️ — سحابة</option>
+       <option value="🖥️" selected="@(current?.Icon == "🖥️")">🖥️ — تقنية</option>
+       <option value="🎯" selected="@(current?.Icon == "🎯")">🎯 — أهداف</option>
+       <option value="✦" selected="@(current?.Icon == "✦")">✦ — نجمة</option>
+       <option value="◆" selected="@(current?.Icon == "◆")">◆ — معين</option>
+       <option value="◇" selected="@(current?.Icon == "◇")">◇ — معين فارغ</option>
+       <option value="◈" selected="@(current?.Icon == "◈")">◈ — شكل هندسي</option>
+       <option value="✳" selected="@(current?.Icon == "✳")">✳ — زخرفة</option>
+       <option value="◎" selected="@(current?.Icon == "◎")">◎ — دائرة</option>
+       <option value="⚙" selected="@(current?.Icon == "⚙")">⚙ — ترس</option>
+       <option value="✎" selected="@(current?.Icon == "✎")">✎ — قلم</option>
+       <option value="✚" selected="@(current?.Icon == "✚")">✚ — صليب</option>
+       <option value="▥" selected="@(current?.Icon == "▥")">▥ — أعمدة</option>
+       <option value="✧" selected="@(current?.Icon == "✧")">✧ — بريق</option>
+       <option value="文" selected="@(current?.Icon == "文")">文 — لغات</option>
+       <option value="⌘" selected="@(current?.Icon == "⌘")">⌘ — برمجة (رمز)</option>
+       @if(current is not null && !new[]{"⌘","💻","📱","🌐","🤖","🧠","🔐","🛡️","📊","📈","💼","🏦","🎨","📷","🎬","🎵","📚","🎓","📝","🗣️","🌍","🔬","⚙️","🩺","🏋️","🧩","🚀","🏠","🚗","🛒","💡","📡","☁️","🖥️","🎯","✦","◆","◇","◈","✳","◎","⚙","✎","✚","▥","✧","文"}.Contains(current.Icon)){<option value="@current.Icon" selected>@current.Icon — الرمز الحالي</option>}
+      </select>
     </label>
     <label>وصف القسم
       <textarea name="description" maxlength="3000" rows="4" placeholder="اكتب وصف القسم ومجالاته التعليمية">@(current?.Description??"")</textarea>
