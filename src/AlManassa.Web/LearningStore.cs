@@ -16,6 +16,20 @@ public sealed class LearningStore(IConfiguration config) {
         await using var reader=await cmd.ExecuteReaderAsync(ct);
         return await reader.ReadAsync(ct)?(reader.GetString(0),reader.GetString(1)):null;
     }
+    public async Task<List<(Guid Id,string Title)>> PublicLessonTitlesAsync(Guid courseId,CancellationToken ct=default){
+        var list=new List<(Guid,string)>();
+        await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("""
+          SELECT l.id,l.title_ar FROM stage_lessons l
+          JOIN course_stages s ON s.id=l.stage_id
+          JOIN courses c ON c.id=s.course_id
+          WHERE c.id=@id AND c.published=true ORDER BY s.position,l.position
+          """,db);
+        cmd.Parameters.AddWithValue("id",courseId);
+        await using var reader=await cmd.ExecuteReaderAsync(ct);
+        while(await reader.ReadAsync(ct))list.Add((reader.GetGuid(0),reader.GetString(1)));
+        return list;
+    }
     public async Task<Guid?> ResumeStageAsync(Guid userId,Guid courseId,CancellationToken ct=default) {
         await using var conn=new NpgsqlConnection(ConnectionString);await conn.OpenAsync(ct);
         await using var cmd=new NpgsqlCommand("""
