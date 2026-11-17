@@ -16,6 +16,7 @@
   <section class="catalog-section" id="subjects">
 <div class="section-heading"><div><span class="eyebrow">EXPLORE BY SUBJECT</span><h2>استكشف التخصصات التعليمية</h2></div><p>اختر المجال الذي يناسب أهدافك المهنية</p></div>
 <div class="subject-grid">
+@if(Subjects.Count==0){<p class="course-message">لا توجد أقسام تعليمية مفعّلة حاليًا.</p>}
 @foreach(var subject in Subjects){<button class="subject-tile" @onclick="()=>SelectSubject(subject.Key)"><span class="subject-icon">@subject.Icon</span><strong>@subject.Name</strong><small>@courses.Count(c=>c.Category==subject.Key) كورس منشور</small></button>}
 </div></section>
 <section class="learning-paths" id="tracks"><div class="section-heading"><div><span class="eyebrow">LEARNING PATHWAYS</span><h2>اختر طريقة التعلم المناسبة</h2></div></div><div class="path-grid">
