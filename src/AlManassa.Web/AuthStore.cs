@@ -94,6 +94,13 @@ public sealed class AuthStore(IConfiguration config) {
         cmd.Parameters.AddWithValue("role",role);cmd.Parameters.AddWithValue("id",id);cmd.Parameters.AddWithValue("owner",config["ADMIN_EMAIL"]?.Trim().ToLowerInvariant()??"");
         if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("المستخدم غير موجود أو محمي");
     }
+    public async Task ResetManagedPasswordAsync(Guid id,string password){
+        if(password.Length is <12 or >128)throw new ArgumentException("كلمة المرور يجب أن تكون بين 12 و128 حرفًا");
+        await using var c=new NpgsqlConnection(ConnectionString);await c.OpenAsync();
+        await using var cmd=new NpgsqlCommand("update app_users set password_hash=@hash where id=@id and role <> 'SuperAdmin' and email <> @owner",c);
+        cmd.Parameters.AddWithValue("hash",Hash(password));cmd.Parameters.AddWithValue("id",id);cmd.Parameters.AddWithValue("owner",config["ADMIN_EMAIL"]?.Trim().ToLowerInvariant()??"");
+        if(await cmd.ExecuteNonQueryAsync()!=1)throw new InvalidOperationException("المستخدم غير موجود أو محمي");
+    }
     public async Task DeleteManagedAsync(Guid id){
         await using var c=new NpgsqlConnection(ConnectionString);await c.OpenAsync();
         await using var cmd=new NpgsqlCommand("delete from app_users where id=@id and role <> 'SuperAdmin' and email <> @owner",c);
