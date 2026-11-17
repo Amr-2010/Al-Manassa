@@ -65,14 +65,23 @@ public sealed class LearningStore(IConfiguration config) {
         cmd.Parameters.AddWithValue("user",userId);cmd.Parameters.AddWithValue("stage",stageId);
         return (bool)(await cmd.ExecuteScalarAsync(ct)??false);
     }
+    public async Task MarkVideoWatchedAsync(Guid userId,Guid lessonId) {
+      await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync();
+      await using(var schema=new NpgsqlCommand("CREATE TABLE IF NOT EXISTS lesson_video_watches(user_id uuid NOT NULL,lesson_id uuid NOT NULL,PRIMARY KEY(user_id,lesson_id))",db))await schema.ExecuteNonQueryAsync();
+      await using var cmd=new NpgsqlCommand("INSERT INTO lesson_video_watches(user_id,lesson_id) SELECT @user,l.id FROM stage_lessons l JOIN course_stages s ON s.id=l.stage_id JOIN course_enrollments e ON e.course_id=s.course_id AND e.user_id=@user WHERE l.id=@lesson AND l.video_provider IN ('youtube','hosted') ON CONFLICT DO NOTHING",db);
+      cmd.Parameters.AddWithValue("user",userId);cmd.Parameters.AddWithValue("lesson",lessonId);await cmd.ExecuteNonQueryAsync();
+    }
     public async Task<bool> CompleteLessonAsync(Guid userId,Guid lessonId,CancellationToken ct=default) {
         await using var conn=new NpgsqlConnection(ConnectionString);await conn.OpenAsync(ct);
+        await using(var schema=new NpgsqlCommand("CREATE TABLE IF NOT EXISTS lesson_video_watches(user_id uuid NOT NULL,lesson_id uuid NOT NULL,PRIMARY KEY(user_id,lesson_id))",conn))await schema.ExecuteNonQueryAsync(ct);
         await using var cmd=new NpgsqlCommand("""
             INSERT INTO lesson_completions(user_id,lesson_id)
             SELECT @user,l.id FROM stage_lessons l
             JOIN course_stages s ON s.id=l.stage_id
             JOIN course_enrollments e ON e.course_id=s.course_id AND e.user_id=@user
             WHERE l.id=@lesson
+            AND l.video_provider IN ('youtube','hosted')
+            AND EXISTS(SELECT 1 FROM lesson_video_watches w WHERE w.user_id=@user AND w.lesson_id=l.id)
             AND NOT EXISTS(
               SELECT 1 FROM course_stages prior WHERE prior.course_id=s.course_id AND prior.position<s.position
               AND (EXISTS(SELECT 1 FROM stage_lessons pl WHERE pl.stage_id=prior.id AND NOT EXISTS(SELECT 1 FROM lesson_completions lc WHERE lc.lesson_id=pl.id AND lc.user_id=@user))
