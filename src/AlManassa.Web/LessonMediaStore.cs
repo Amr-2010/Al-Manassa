@@ -51,6 +51,18 @@ public sealed class LessonMediaStore(IConfiguration config) {
   while(await r.ReadAsync())items.Add((r.GetGuid(0),r.GetString(1),r.GetString(2)));
   return items;
  }
+ public async Task<(long Watched,long Duration)> CourseWatchTotalsAsync(Guid userId,Guid courseId){
+  await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync();
+  await using(var schema=new NpgsqlCommand("ALTER TABLE student_lesson_progress ADD COLUMN IF NOT EXISTS watched_seconds integer NOT NULL DEFAULT 0; ALTER TABLE student_lesson_progress ADD COLUMN IF NOT EXISTS duration_seconds integer NOT NULL DEFAULT 0",db))await schema.ExecuteNonQueryAsync();
+  await using var cmd=new NpgsqlCommand("""
+   SELECT COALESCE(SUM(LEAST(p.watched_seconds,p.duration_seconds)),0),COALESCE(SUM(p.duration_seconds),0)
+   FROM student_lesson_progress p JOIN stage_lessons l ON l.id=p.lesson_id
+   JOIN course_stages s ON s.id=l.stage_id WHERE s.course_id=@course AND p.user_id=@user
+   """,db);
+  cmd.Parameters.AddWithValue("user",userId);cmd.Parameters.AddWithValue("course",courseId);
+  await using var reader=await cmd.ExecuteReaderAsync();
+  return await reader.ReadAsync()?(reader.GetInt64(0),reader.GetInt64(1)):(0L,0L);
+ }
  public async Task<(int Position,int Watched,int Duration)> WatchProgressAsync(Guid userId,Guid lessonId){
   await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync();
   await using(var schema=new NpgsqlCommand("ALTER TABLE student_lesson_progress ADD COLUMN IF NOT EXISTS watched_seconds integer NOT NULL DEFAULT 0; ALTER TABLE student_lesson_progress ADD COLUMN IF NOT EXISTS duration_seconds integer NOT NULL DEFAULT 0",db))await schema.ExecuteNonQueryAsync();
