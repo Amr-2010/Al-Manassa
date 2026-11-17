@@ -19,7 +19,7 @@
 <div class="section-heading"><div><span class="eyebrow">EXPLORE BY SUBJECT</span><h2>استكشف التخصصات التعليمية</h2></div><p>اختر المجال الذي يناسب أهدافك المهنية</p></div>
 <div class="subject-grid">
 @if(Subjects.Count==0){<p class="course-message">لا توجد أقسام تعليمية مفعّلة حاليًا.</p>}
-@foreach(var subject in Subjects){<a class="subject-tile" href="@($"/?category={Uri.EscapeDataString(subject.Key)}#courses")"><span class="subject-icon">@subject.Icon</span><strong>@subject.Name</strong><small>@courses.Count(c=>c.Category==subject.Key) كورس منشور</small></a>}
+@foreach(var subject in Subjects){<a class="subject-tile" href="@(courses.Count(c=>c.Category==subject.Key)==1 ? $"/learn/{courses.First(c=>c.Category==subject.Key).Id}" : $"/?category={Uri.EscapeDataString(subject.Key)}#courses")"><span class="subject-icon">@subject.Icon</span><strong>@subject.Name</strong><small>@courses.Count(c=>c.Category==subject.Key) كورس منشور</small></a>}
 </div></section>
 <section class="course-ticker-section" aria-label="شريط الكورسات المتاحة">
   <div class="course-ticker-heading"><strong>الكورسات المتاحة</strong><span>اضغط على أي كورس لفتح صفحته مباشرة</span></div>
