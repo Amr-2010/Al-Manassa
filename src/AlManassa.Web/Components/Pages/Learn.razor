@@ -8,6 +8,7 @@
 @inject LearningStore Learning
 @inject LessonMediaStore Media
 @inject AuthenticationStateProvider Authentication
+@inject ILogger<Learn> Logger
 <PageTitle>دورتي التعليمية | المنصة</PageTitle>
 <div class="learning-page" dir="rtl">
  <header class="learning-header"><a href="/">المنصة · Al-Manassa</a><nav aria-label="التنقل"><a href="/">الرئيسية</a> · <a href="/#courses">الدورات</a> · <a href="/dashboard">لوحة التحكم</a></nav><span>مساري التعليمي</span></header>
@@ -24,12 +25,12 @@
  @if(courseTitle is not null && stages.Count>0 && !enrolled){<p>سجّل في الدورة للوصول إلى المحتوى.</p><form method="post" action="@($"/api/courses/{CourseId}/enroll")"><AntiforgeryToken /><button type="submit" class="enroll-submit">التحاق بالدورة</button></form>}
  else if(enrolled && stages.Count>0) {
  <p>الأجزاء المكتملة: @stages.Count(x=>x.Passed) من @stages.Count</p>
- <button @onclick="ResumeLearning">استكمال التعلم</button>
+ <a class="enroll-submit" href="@($"/learn/{CourseId}?stage={stages.FirstOrDefault(x=>!x.Passed)?.Id ?? stages[0].Id}")">استكمال التعلم</a>
  <div class="learning-stages">
  @foreach(var stage in stages){
- <button class="learning-stage @(stage.Passed?"completed":"")" @onclick="()=>OpenStage(stage.Id)">
+ <a class="learning-stage @(stage.Passed?"completed":"")" href="@($"/learn/{CourseId}?stage={stage.Id}")">
   <strong>عرض دروس الكورس @(stages.Count>1?$"· المجموعة {stage.Position}":"")</strong><span>@(stage.Passed?"✓ مكتمل":"فتح الدروس")</span>
- </button>
+ </a>
  }
  </div>
  @if(activeStage is Guid sid){
@@ -83,6 +84,7 @@
 @code{
  [Parameter] public Guid CourseId{get;set;}
  [SupplyParameterFromQuery(Name="enrollmentError")] public int? EnrollmentError {get;set;}
+ [SupplyParameterFromQuery(Name="stage")] public Guid? RequestedStage {get;set;}
  string? courseTitle,courseDescription;
  Guid userId;bool enrolled;Guid? activeStage;string? message;
  List<(Guid Id,string Title)> publicLessons=new();
@@ -93,8 +95,8 @@
  protected override async Task OnInitializedAsync(){
    var state=await Authentication.GetAuthenticationStateAsync();
    if(!Guid.TryParse(state.User.FindFirstValue(ClaimTypes.NameIdentifier),out userId)){message="يجب تسجيل الدخول أولًا";return;}
-   try {var info=await Learning.CourseInfoAsync(CourseId);courseTitle=info?.Title;courseDescription=info?.Description;publicLessons=await Learning.PublicLessonTitlesAsync(CourseId);await Refresh();if(enrolled && stages.Count>0)await OpenStage(stages[0].Id);}
-   catch(Exception){message="تعذر تحميل محتوى الدورة من قاعدة البيانات. يرجى المحاولة لاحقًا.";}
+   try {var info=await Learning.CourseInfoAsync(CourseId);courseTitle=info?.Title;courseDescription=info?.Description;publicLessons=await Learning.PublicLessonTitlesAsync(CourseId);await Refresh();if(enrolled && stages.Count>0)await OpenStage(RequestedStage is Guid requested && stages.Any(x=>x.Id==requested)?requested:stages[0].Id);}
+   catch(Exception ex){Logger.LogError(ex,"Failed to load course {CourseId} for learner",CourseId);message="تعذر تحميل بعض محتويات الكورس. يرجى المحاولة لاحقًا.";}
  }
  async Task Refresh(){
    stages=await Learning.StagesAsync(userId,CourseId);
@@ -109,9 +111,14 @@
  }
  async Task OpenStage(Guid id){
    if(!await Learning.CanAccessStageAsync(userId,id)){message="يجب إكمال المراحل السابقة واجتياز اختباراتها أولًا";return;}
-   activeStage=id;lessons=await Learning.LessonsAsync(userId,id);questions=await Learning.QuestionsAsync(userId,CourseId,id);
+   activeStage=id;lessons=await Learning.LessonsAsync(userId,id);
+   try{questions=await Learning.QuestionsAsync(userId,CourseId,id);}catch(Exception ex){Logger.LogError(ex,"Failed to load questions for course {CourseId} and stage {StageId}",CourseId,id);questions=new();}
    lessonAssets.Clear();positions.Clear();positionInput.Clear();
-   foreach(var lesson in lessons){lessonAssets[lesson.Id]=await Media.ListAsync(lesson.Id,userId);positions[lesson.Id]=await Media.PositionAsync(userId,lesson.Id);positionInput[lesson.Id]=positions[lesson.Id];}
+   foreach(var lesson in lessons){
+    try{lessonAssets[lesson.Id]=await Media.ListAsync(lesson.Id,userId);}catch(Exception ex){Logger.LogWarning(ex,"Failed to load attachments for lesson {LessonId}",lesson.Id);lessonAssets[lesson.Id]=new();}
+    try{positions[lesson.Id]=await Media.PositionAsync(userId,lesson.Id);}catch(Exception ex){Logger.LogWarning(ex,"Failed to load playback position for lesson {LessonId}",lesson.Id);positions[lesson.Id]=0;}
+    positionInput[lesson.Id]=positions.GetValueOrDefault(lesson.Id);
+   }
    answers.Clear();message=null;
  }
  void UpdatePosition(Guid id,string? raw){if(int.TryParse(raw,out var seconds))positionInput[id]=Math.Clamp(seconds,0,86400);}
