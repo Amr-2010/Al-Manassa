@@ -28,12 +28,12 @@
       <div class="course-ticker-track">
         <div class="course-ticker-copy">
           @foreach(var course in courses){<a class="course-ticker-link" href="@($"/learn/{course.Id}")"><span class="ticker-dot">✦</span>@course.TitleAr</a>}
-          @for(var repeat=0;repeat<9;repeat++){
+          @for(var repeat=1;repeat<Math.Clamp((int)Math.Ceiling(10.0/courses.Count),1,10);repeat++){
             @foreach(var course in courses){<a class="course-ticker-link" href="@($"/learn/{course.Id}")" tabindex="-1" aria-hidden="true"><span class="ticker-dot">✦</span>@course.TitleAr</a>}
           }
         </div>
         <div class="course-ticker-copy" aria-hidden="true">
-          @for(var repeat=0;repeat<10;repeat++){
+          @for(var repeat=0;repeat<Math.Clamp((int)Math.Ceiling(10.0/courses.Count),1,10);repeat++){
             @foreach(var course in courses){<a class="course-ticker-link" href="@($"/learn/{course.Id}")" tabindex="-1"><span class="ticker-dot">✦</span>@course.TitleAr</a>}
           }
         </div>
