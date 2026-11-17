@@ -279,9 +279,10 @@ static string AuthPage(string title,string action,string token,string returnUrl=
         "'>"+(endpoint=="/login"?"<label style='display:flex;align-items:center;gap:8px'><input type='checkbox' name='remember' style='width:auto' checked> تذكرني لمدة 30 يومًا</label>":"")+"<button type='submit'>"+heading+"</button></form><p><a href='"+switchLink+"'>"+switchText+"</a></p><p><a href='/'>العودة للرئيسية</a></p></main></body></html>";
 }
 
-record CurriculumInput(string Topic,string Level,string Language,int DurationWeeks);
-
 static string AuthErrorPage() => """
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تعذر تسجيل الدخول | المنصة</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#edf3fb;color:#183b69;font-family:Tahoma,Arial,sans-serif}main{width:min(430px,90vw);box-sizing:border-box;padding:32px;background:#fff;border-radius:18px;box-shadow:0 14px 42px #172e5022;text-align:center}h1{font-size:23px}p{line-height:1.9}a{display:inline-block;margin-top:12px;padding:12px 24px;background:#254e7e;color:#fff;text-decoration:none;border-radius:9px}</style></head><body><main><h1>تعذر تسجيل الدخول</h1><p>البريد الإلكتروني أو كلمة المرور غير صحيحة. للمدير الجديد استخدم البريد وكلمة المرور المحددين عند إنشاء حسابه، وليس كلمة Admin كاسم مستخدم.</p><a href="/login">العودة إلى تسجيل الدخول</a></main></body></html>
 """;
+
+record CurriculumInput(string Topic,string Level,string Language,int DurationWeeks);
+
