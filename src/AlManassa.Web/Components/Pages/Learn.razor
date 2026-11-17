@@ -49,7 +49,7 @@
  else{<p><a href="@($"/api/lesson-assets/{asset.Id}")" target="_blank" rel="noopener">@asset.Filename (PDF)</a></p>}
  }}
  <p>آخر موضع محفوظ للفيديو: @(positions.GetValueOrDefault(lesson.Id)) ثانية</p>
- <label>الموضع الحالي بالثواني <input type="number" min="0" max="86400" @bind="positionInput[lesson.Id]" /></label>
+ <label>الموضع الحالي بالثواني <input type="number" min="0" max="86400" value="@positionInput.GetValueOrDefault(lesson.Id)" @onchange="e=>UpdatePosition(lesson.Id,e.Value?.ToString())" /></label>
  <button @onclick="()=>SavePlayback(lesson.Id)">حفظ موضع الفيديو</button>
  <button disabled="@lesson.Completed" @onclick="()=>Complete(lesson.Id)">@(lesson.Completed?"تم إكمال الدرس":"تحديد الدرس مكتملًا")</button>
  </article>
@@ -114,6 +114,7 @@
    foreach(var lesson in lessons){lessonAssets[lesson.Id]=await Media.ListAsync(lesson.Id,userId);positions[lesson.Id]=await Media.PositionAsync(userId,lesson.Id);positionInput[lesson.Id]=positions[lesson.Id];}
    answers.Clear();message=null;
  }
+ void UpdatePosition(Guid id,string? raw){if(int.TryParse(raw,out var seconds))positionInput[id]=Math.Clamp(seconds,0,86400);}
  async Task SavePlayback(Guid id){await Media.SavePositionAsync(userId,id,positionInput.GetValueOrDefault(id));positions[id]=positionInput.GetValueOrDefault(id);message="تم حفظ موضع الفيديو في قاعدة البيانات";}
  async Task Complete(Guid id){await Learning.CompleteLessonAsync(userId,id);if(activeStage is Guid sid)lessons=await Learning.LessonsAsync(userId,sid);}
  void Choose(Guid q,Guid o)=>answers[q]=o;
