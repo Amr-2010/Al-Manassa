@@ -290,3 +290,9 @@ main:has(.hero-new) .course-footer{margin-top:auto}
 @keyframes almanassa-ticker{from{transform:translateX(0)}to{transform:translateX(50%)}}
 @media(prefers-reduced-motion:reduce){.course-ticker-track{animation:none;flex-wrap:wrap;width:auto;justify-content:center}.course-ticker-viewport{overflow:visible}}
 @media(max-width:650px){.course-ticker-section{margin:20px 0 26px}.course-ticker-heading strong{font-size:19px}.course-ticker-link{font-size:13px;padding:11px 14px}}
+
+/* Category tiles are real navigable links; keep original tile appearance */
+a.subject-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;text-decoration:none;color:inherit;cursor:pointer}
+a.subject-tile:hover,a.subject-tile:focus-visible{border-color:#e5a62b;box-shadow:0 10px 24px #153d6a20;transform:translateY(-2px);outline-offset:2px}
+.catalog-reset-link{display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;border-radius:10px;background:#123e70;color:#fff;text-decoration:none;font-weight:700}
+.catalog-reset-link:hover,.catalog-reset-link:focus-visible{background:#20598e;color:#fff}
