@@ -29,6 +29,7 @@
    @foreach(var user in items){
     <tr><td>@user.Email</td><td>@(user.Role=="Admin"?"مدير":user.Role=="Student"?"متدرب":user.Role)</td><td>@user.CreatedAt.ToString("yyyy-MM-dd")</td>
     <td><form method="post" action="/api/superadmin/users/role" style="display:inline-flex;gap:6px;align-items:center"><AntiforgeryToken /><input type="hidden" name="id" value="@user.Id" /><select name="role"><option value="Student" selected="@(user.Role=="Student")">متدرب</option><option value="Admin" selected="@(user.Role=="Admin")">مدير</option></select><button type="submit">حفظ الدور</button></form>
+    <form method="post" action="/api/superadmin/users/reset-password" style="display:inline-flex;gap:6px;align-items:center;margin:5px"><AntiforgeryToken /><input type="hidden" name="id" value="@user.Id" /><input type="password" name="password" minlength="12" maxlength="128" placeholder="كلمة مرور جديدة" autocomplete="new-password" required /><button type="submit">تغيير كلمة المرور</button></form>
     <form method="post" action="/api/superadmin/users/delete" style="display:inline-block;margin:5px"><AntiforgeryToken /><input type="hidden" name="id" value="@user.Id" /><button type="submit" onclick="return confirm('تأكيد حذف المستخدم؟')">حذف</button></form></td></tr>
    }
    </tbody></table>
