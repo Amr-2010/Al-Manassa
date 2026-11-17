@@ -135,6 +135,24 @@ app.MapPost("/api/courses/{courseId:guid}/enroll",async (Guid courseId,HttpConte
   return Results.Redirect("/learn/"+courseId+"?enrollmentError=1");
  }
 }).RequireAuthorization();
+app.MapPost("/api/courses/{courseId:guid}/stages/{stageId:guid}/questions",async (Guid courseId,Guid stageId,HttpContext ctx,IAntiforgery antiforgery,LearningStore learning)=>{
+ if(!await antiforgery.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ if(!Guid.TryParse(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier),out var userId))return Results.Unauthorized();
+ var url=$"/learn/{courseId}?stage={stageId}";
+ try{
+  var form=await ctx.Request.ReadFormAsync();
+  var questions=await learning.QuestionsAsync(userId,courseId,stageId);
+  var answers=new Dictionary<Guid,Guid>();
+  foreach(var q in questions){
+   if(Guid.TryParse(form["q_"+q.Id].ToString(),out var option))answers[q.Id]=option;
+  }
+  var result=await learning.SubmitAsync(userId,courseId,stageId,answers);
+  return Results.Redirect(url+"&assessmentNotice="+Uri.EscapeDataString(result.Message+" — "+result.Score+"%"));
+ }catch(Exception ex){
+  app.Logger.LogError(ex,"Failed to submit stage questions {StageId}",stageId);
+  return Results.Redirect(url+"&assessmentNotice="+Uri.EscapeDataString("تعذر تسليم الأسئلة، حاول مرة أخرى"));
+ }
+}).RequireAuthorization();
 static string UserRedirect(string message)=>"/dashboard/users?notice="+Uri.EscapeDataString(message);
 app.MapPost("/api/superadmin/users/create",async (HttpContext ctx,IAntiforgery af,AuthStore users)=>{
  if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
