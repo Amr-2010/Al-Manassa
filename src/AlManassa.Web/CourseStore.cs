@@ -24,6 +24,19 @@ public sealed class CourseStore(IConfiguration config)
         while(await reader.ReadAsync(ct)) result.Add(new(reader.GetGuid(0),reader.GetString(1),reader.GetString(2),reader.GetString(3),reader.GetString(4),reader.GetInt32(5),reader.GetBoolean(6)));
         return result;
     }
+    public async Task<Dictionary<Guid,long>> PublishedEnrollmentCountsAsync(CancellationToken ct=default) {
+        await using var conn=new NpgsqlConnection(ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var cmd=new NpgsqlCommand("""
+            SELECT c.id,COUNT(e.id) FROM courses c
+            LEFT JOIN course_enrollments e ON e.course_id=c.id
+            WHERE c.published=true GROUP BY c.id
+            """,conn);
+        var result=new Dictionary<Guid,long>();
+        await using var reader=await cmd.ExecuteReaderAsync(ct);
+        while(await reader.ReadAsync(ct))result[reader.GetGuid(0)]=reader.GetInt64(1);
+        return result;
+    }
     public async Task<(long Total,long Published)> CountsAsync(CancellationToken ct=default) {
         await using var conn=new NpgsqlConnection(ConnectionString);
         await conn.OpenAsync(ct);
