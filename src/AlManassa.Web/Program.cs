@@ -137,6 +137,12 @@ app.MapPost("/api/superadmin/users/role",async (HttpContext ctx,IAntiforgery af,
  try{await users.ChangeManagedRoleAsync(Guid.Parse(f["id"].ToString()),f["role"].ToString());return Results.Redirect(UserRedirect("تم تعديل صلاحية المستخدم"));}
  catch(Exception ex){return Results.Redirect(UserRedirect("تعذر تعديل الصلاحية: "+ex.Message));}
 }).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="SuperAdmin"});
+app.MapPost("/api/superadmin/users/reset-password",async (HttpContext ctx,IAntiforgery af,AuthStore users)=>{
+ if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ var f=await ctx.Request.ReadFormAsync();
+ try{await users.ResetManagedPasswordAsync(Guid.Parse(f["id"].ToString()),f["password"].ToString());return Results.Redirect(UserRedirect("تم تعيين كلمة مرور جديدة. يمكن للمستخدم تسجيل الدخول بها الآن"));}
+ catch(Exception ex){return Results.Redirect(UserRedirect("تعذر تغيير كلمة المرور: "+ex.Message));}
+}).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute{Roles="SuperAdmin"});
 app.MapPost("/api/superadmin/users/delete",async (HttpContext ctx,IAntiforgery af,AuthStore users)=>{
  if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
  var f=await ctx.Request.ReadFormAsync();
