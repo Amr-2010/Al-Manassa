@@ -24,6 +24,7 @@
  @if(courseTitle is null){<div class="learning-notice">تعذر العثور على هذه الدورة أو أنها غير منشورة. <a href="/">العودة إلى الدورات</a></div>}
  
  @if(EnrollmentError==1){<div class="learning-notice" role="alert">تعذر تسجيلك في الكورس. تأكد من اتصال المنصة بقاعدة البيانات ثم حاول مرة أخرى.</div>}
+ @if(!string.IsNullOrWhiteSpace(AssessmentNotice)){<div class="learning-notice" role="status">@AssessmentNotice</div>}
  @if(!string.IsNullOrWhiteSpace(message)){<div class="learning-notice">@message</div>}
  @if(courseTitle is not null && stages.Count>0 && !enrolled){<p>سجّل في الدورة للوصول إلى المحتوى.</p><form method="post" action="@($"/api/courses/{CourseId}/enroll")"><AntiforgeryToken /><button type="submit" class="enroll-submit">التحاق بالدورة</button></form>}
  else if(enrolled && stages.Count>0) {
@@ -61,8 +62,11 @@
  }
  <h2>أسئلة الدروس</h2>
  @if(questions.Count==0){<p>لم تُضف أسئلة لهذا الجزء بعد.</p>}
- else { @foreach(var q in questions){<fieldset class="learning-question"><legend>@q.Prompt</legend>@foreach(var o in q.Options){<label><input type="radio" name="@q.Id" checked="@(answers.GetValueOrDefault(q.Id)==o.Id)" @onchange="()=>Choose(q.Id,o.Id)" /> @o.Label</label>}</fieldset>}
- <button @onclick="SubmitStage" disabled="@(answers.Count!=questions.Count)">تسليم أسئلة الدروس</button> }
+ else {<form class="lesson-quiz-form" method="post" action="@($"/api/courses/{CourseId}/stages/{sid}/questions")">
+ <AntiforgeryToken />
+ @foreach(var q in questions){<fieldset class="learning-question"><legend>@q.Prompt</legend>@foreach(var o in q.Options){<label><input type="radio" name="@("q_"+q.Id)" value="@o.Id" required /> @o.Label</label>}</fieldset>}
+ <button type="submit" class="quiz-submit">تسليم إجابات الأسئلة</button>
+ </form> }
  </section>
  }
  <section class="learning-panel"><h2>الامتحان النهائي</h2><p>20 سؤالًا بعد إكمال الدروس المطلوبة. النجاح من 70%.</p>
@@ -89,6 +93,7 @@
  [Parameter] public Guid CourseId{get;set;}
  [SupplyParameterFromQuery(Name="enrollmentError")] public int? EnrollmentError {get;set;}
  [SupplyParameterFromQuery(Name="stage")] public Guid? RequestedStage {get;set;}
+ [SupplyParameterFromQuery(Name="assessmentNotice")] public string? AssessmentNotice {get;set;}
  string? courseTitle,courseDescription;
  Guid userId;bool enrolled;Guid? activeStage;string? message;
  List<(Guid Id,string Title)> publicLessons=new();
