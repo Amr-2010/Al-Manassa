@@ -28,7 +28,7 @@
  @if(!string.IsNullOrWhiteSpace(message)){<div class="learning-notice">@message</div>}
  @if(courseTitle is not null && stages.Count>0 && !enrolled){<p>سجّل في الدورة للوصول إلى المحتوى.</p><form method="post" action="@($"/api/courses/{CourseId}/enroll")"><AntiforgeryToken /><button type="submit" class="enroll-submit">التحاق بالدورة</button></form>}
  else if(enrolled && stages.Count>0) {
- <div class="learning-progress-summary"><span>تقدمك في الكورس</span><strong>@(publicLessons.Count==0?0:100*publicLessons.Count(x=>lessons.Any(l=>l.Id==x.Id && l.Completed))/publicLessons.Count)%</strong></div>
+ <div class="learning-progress-summary"><span>تقدم المشاهدة: @TimeSpan.FromSeconds(TotalWatched).ToString(@"hh\:mm\:ss") من @TimeSpan.FromSeconds(TotalDuration).ToString(@"hh\:mm\:ss")</span><strong>@(TotalDuration==0?0:Math.Min(100,100*TotalWatched/TotalDuration))%</strong></div>
  <a class="enroll-submit" href="@($"/learn/{CourseId}?stage={stages.FirstOrDefault(x=>!x.Passed)?.Id ?? stages[0].Id}")">استكمال التعلم</a>
  <div class="learning-stages">
  @foreach(var stage in stages){
@@ -55,7 +55,7 @@
  else{<p><a href="@($"/api/lesson-assets/{asset.Id}")" target="_blank" rel="noopener">@asset.Filename (PDF)</a></p>}
  }}
  @if(lesson.VideoProvider is "youtube" or "hosted"){
- <p class="video-watch-status">@(lesson.Completed?"✓ اكتمل الدرس":watchedVideos.Contains(lesson.Id)?"✓ انتهى الفيديو، جارٍ تسجيل إكمال الدرس":"شاهد الفيديو كاملًا دون تقديمه لفتح الدرس التالي تلقائيًا")</p>
+ <p class="video-watch-status">تمت مشاهدة @TimeSpan.FromSeconds(watchedSeconds.GetValueOrDefault(lesson.Id)).ToString(@"hh\:mm\:ss") من @TimeSpan.FromSeconds(videoDurations.GetValueOrDefault(lesson.Id)).ToString(@"hh\:mm\:ss") — @(lesson.Completed?"✓ اكتمل الدرس":watchedVideos.Contains(lesson.Id)?"✓ انتهى الفيديو، جارٍ تسجيل إكمال الدرس":"شاهد الفيديو كاملًا دون تقديمه لفتح الدرس التالي تلقائيًا")</p>
  }else if(!lesson.Completed){<p class="learning-notice">يلزم ربط فيديو بالدرس قبل السماح بإكماله.</p>}
  @if(lesson.Completed){<span class="lesson-completed-label">✓ تم إكمال الدرس</span>}else if(watchedVideos.Contains(lesson.Id)){<button disabled="@completingLesson" @onclick="()=>Complete(lesson.Id)">إعادة محاولة تسجيل الإكمال</button>}
  </article>
@@ -99,7 +99,9 @@
  List<(Guid Id,string Title)> publicLessons=new();
  List<StageInfo> stages=new();List<LessonInfo> lessons=new();List<QuestionInfo> questions=new();List<QuestionInfo> finalQuestions=new();
  Dictionary<Guid,List<(Guid Id,string Filename,string Mime)>> lessonAssets=new();
- Dictionary<Guid,int> positions=new(),positionInput=new();
+ Dictionary<Guid,int> positions=new(),positionInput=new(),watchedSeconds=new(),videoDurations=new();
+ int TotalWatched=>watchedSeconds.Values.Sum();
+ int TotalDuration=>videoDurations.Values.Sum();
  HashSet<Guid> watchedVideos=new();bool completingLesson;DotNetObjectReference<Learn>? videoCallback;
  Dictionary<Guid,Guid> answers=new();Dictionary<Guid,Guid> finalAnswers=new();CertificateInfo? certificate;
  protected override async Task OnInitializedAsync(){
@@ -123,10 +125,10 @@
    if(!await Learning.CanAccessStageAsync(userId,id)){message="يجب إكمال المراحل السابقة واجتياز اختباراتها أولًا";return;}
    activeStage=id;lessons=await Learning.LessonsAsync(userId,id);
    try{questions=await Learning.QuestionsAsync(userId,CourseId,id);}catch(Exception ex){Logger.LogError(ex,"Failed to load questions for course {CourseId} and stage {StageId}",CourseId,id);questions=new();}
-   lessonAssets.Clear();positions.Clear();positionInput.Clear();
+   lessonAssets.Clear();positions.Clear();positionInput.Clear();watchedSeconds.Clear();videoDurations.Clear();
    foreach(var lesson in lessons){
     try{lessonAssets[lesson.Id]=await Media.ListAsync(lesson.Id,userId);}catch(Exception ex){Logger.LogWarning(ex,"Failed to load attachments for lesson {LessonId}",lesson.Id);lessonAssets[lesson.Id]=new();}
-    try{positions[lesson.Id]=await Media.PositionAsync(userId,lesson.Id);}catch(Exception ex){Logger.LogWarning(ex,"Failed to load playback position for lesson {LessonId}",lesson.Id);positions[lesson.Id]=0;}
+    try{var progress=await Media.WatchProgressAsync(userId,lesson.Id);positions[lesson.Id]=progress.Position;watchedSeconds[lesson.Id]=progress.Watched;videoDurations[lesson.Id]=progress.Duration;}catch(Exception ex){Logger.LogWarning(ex,"Failed to load playback position for lesson {LessonId}",lesson.Id);positions[lesson.Id]=0;}
     positionInput[lesson.Id]=positions.GetValueOrDefault(lesson.Id);
    }
    watchedVideos.Clear();answers.Clear();message=null;
@@ -135,12 +137,20 @@
   if(!enrolled||lessons.Count==0)return;
   try{
    videoCallback ??= DotNetObjectReference.Create(this);
-   await JS.InvokeVoidAsync("alManassaWatch.attach",videoCallback,lessons.Where(l=>!l.Completed && l.VideoProvider is "youtube" or "hosted").Select(l=>new {id=l.Id.ToString(),provider=l.VideoProvider}).ToArray());
+   await JS.InvokeVoidAsync("alManassaWatch.attach",videoCallback,lessons.Where(l=>!l.Completed && l.VideoProvider is "youtube" or "hosted").Select(l=>new {id=l.Id.ToString(),provider=l.VideoProvider,position=positions.GetValueOrDefault(l.Id),watched=watchedSeconds.GetValueOrDefault(l.Id)}).ToArray());
   }catch(JSException ex){Logger.LogWarning(ex,"Video watch monitoring unavailable");}
+ }
+ [JSInvokable] public async Task VideoProgress(string lessonId,int position,int watched,int duration){
+  if(!Guid.TryParse(lessonId,out var id)||!lessons.Any(l=>l.Id==id&&l.VideoProvider is "youtube" or "hosted"))return;
+  try{
+   await Media.SaveWatchProgressAsync(userId,id,position,watched,duration);
+   positions[id]=position;watchedSeconds[id]=Math.Max(watchedSeconds.GetValueOrDefault(id),watched);videoDurations[id]=duration;
+   await InvokeAsync(StateHasChanged);
+  }catch(Exception ex){Logger.LogWarning(ex,"Video progress save failed for {LessonId}",id);}
  }
  [JSInvokable] public async Task VideoEnded(string lessonId){
   if(Guid.TryParse(lessonId,out var id) && lessons.Any(l=>l.Id==id && !l.Completed && l.VideoProvider is "youtube" or "hosted")){
-   try{await Learning.MarkVideoWatchedAsync(userId,id);watchedVideos.Add(id);await InvokeAsync(StateHasChanged);await Complete(id);await InvokeAsync(StateHasChanged);}catch(Exception ex){Logger.LogError(ex,"Could not record video completion {LessonId}",id);message="تعذر تسجيل انتهاء الفيديو. حاول إعادة تحميل الصفحة.";await InvokeAsync(StateHasChanged);}
+   try{if(videoDurations.GetValueOrDefault(id)>0 && watchedSeconds.GetValueOrDefault(id)<videoDurations[id]-2)return;await Learning.MarkVideoWatchedAsync(userId,id);watchedVideos.Add(id);await InvokeAsync(StateHasChanged);await Complete(id);await InvokeAsync(StateHasChanged);}catch(Exception ex){Logger.LogError(ex,"Could not record video completion {LessonId}",id);message="تعذر تسجيل انتهاء الفيديو. حاول إعادة تحميل الصفحة.";await InvokeAsync(StateHasChanged);}
   }
  }
  public async ValueTask DisposeAsync(){videoCallback?.Dispose();await Task.CompletedTask;}
