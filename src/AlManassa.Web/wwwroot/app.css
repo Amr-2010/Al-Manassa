@@ -358,3 +358,14 @@ body{background:var(--am-bg);color:var(--am-navy)}
 .learning-progress-summary strong{color:#a96b04;font-size:22px}
 @media(max-width:900px){.hero.hero-new{grid-template-columns:1fr}.hero-new .hero-art{display:none}.learning-course-shell{grid-template-columns:1fr}.learning-outline{position:static;max-height:none}.feature-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.site-header .site-nav{width:100%;justify-content:center;overflow-x:auto}.hero.hero-new{padding:28px 22px}.hero.hero-new h1{font-size:30px}.hero-search>div{flex-wrap:wrap}.hero-search button{flex:1}.feature-strip{gap:8px}.feature-strip>div{padding:12px 8px;font-size:12px}.learning-page .blended-learning{width:calc(100% - 20px);margin:10px auto}.learning-course-heading{padding:23px 20px;border-radius:14px}.learning-course-body,.learning-outline{padding:15px}}
+
+/* Continuous course ticker: identical adjacent groups without spacing at loop boundary */
+.course-ticker-track{display:flex;width:max-content;gap:0;animation:almanassa-ticker-seamless 38s linear infinite}
+.course-ticker-copy{display:flex;align-items:center;flex:0 0 auto;gap:12px;padding-inline-end:12px}
+@keyframes almanassa-ticker-seamless{from{transform:translateX(0)}to{transform:translateX(50%)}}
+.course-collection{margin:28px 0 38px}
+.course-collection-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 18px;padding-bottom:12px;border-bottom:1px solid #dbe6f2}
+.course-collection-heading h3{font-size:23px;margin:0;color:#103c71}
+.course-collection-heading span{color:#647d99;font-size:13px}
+@media(max-width:600px){.course-collection{margin:22px 0}.course-collection-heading h3{font-size:19px}}
+@media(prefers-reduced-motion:reduce){.course-ticker-track{animation:none;width:100%}.course-ticker-copy{flex-wrap:wrap;justify-content:center}.course-ticker-copy[aria-hidden=true]{display:none}}
