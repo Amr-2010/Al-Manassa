@@ -124,6 +124,17 @@ app.Use(async (ctx,next) => {
 
 
 
+app.MapPost("/api/courses/{courseId:guid}/enroll",async (Guid courseId,HttpContext ctx,IAntiforgery antiforgery,LearningStore learning)=>{
+ if(!await antiforgery.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
+ if(!Guid.TryParse(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier),out var userId))return Results.Redirect("/login?returnUrl="+Uri.EscapeDataString("/learn/"+courseId));
+ try{
+  var enrolled=await learning.EnrollAsync(userId,courseId);
+  return Results.Redirect("/learn/"+courseId+(enrolled?"?enrolled=1":"?enrollmentError=1"));
+ }catch(Exception ex){
+  app.Logger.LogError(ex,"Course enrollment failed for {CourseId}",courseId);
+  return Results.Redirect("/learn/"+courseId+"?enrollmentError=1");
+ }
+}).RequireAuthorization();
 static string UserRedirect(string message)=>"/dashboard/users?notice="+Uri.EscapeDataString(message);
 app.MapPost("/api/superadmin/users/create",async (HttpContext ctx,IAntiforgery af,AuthStore users)=>{
  if(!await af.IsRequestValidAsync(ctx))return Results.BadRequest("Invalid form token");
