@@ -302,3 +302,59 @@ a.subject-tile:hover,a.subject-tile:focus-visible{border-color:#e5a62b;box-shado
 .learning-page .enroll-submit{background:#163e70;color:#fff;border:0;border-radius:10px;padding:13px 24px;font-weight:700;font-size:15px;cursor:pointer;min-height:44px}.learning-page .enroll-submit:hover,.learning-page .enroll-submit:focus-visible{background:#245e9d}
 
 .learning-page a.learning-stage{cursor:pointer;text-decoration:none;color:#153a66}.learning-page a.learning-stage:hover,.learning-page a.learning-stage:focus-visible{background:#e1edfc;border-color:#80a9dc;box-shadow:0 6px 20px #153d6a16}.learning-page a.enroll-submit{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;margin:12px 0 18px}.learning-page .learning-panel{scroll-margin-top:30px}
+
+/* Al-Manassa blended learning design 2026: KEY discovery + Udemy player + LMS dashboards */
+:root{--am-navy:#08264b;--am-blue:#123f78;--am-gold:#f3ae28;--am-bg:#f3f7fc;--am-border:#dce6f2}
+body{background:var(--am-bg);color:var(--am-navy)}
+.site-header{background:#09264c;color:#fff;border-bottom:3px solid var(--am-gold);box-shadow:0 6px 22px #09264c1a}
+.site-header .brand,.site-header .site-nav a,.site-header .header-actions a,.site-header .header-actions button{color:#fff}
+.site-header .header-actions button{background:#1b4a80;border:1px solid #ffffff35}
+.site-header .header-actions .dash-link{background:#f3ae28;color:#102d52;padding:11px 17px;border-radius:11px}
+.site-header .signed-in-name{color:#f1f5ff;font-size:12px}
+.hero.hero-new{background:radial-gradient(circle at 16% 30%,#2856a0 0%,transparent 38%),linear-gradient(125deg,#08264b,#0c417f 70%,#173e72);border:1px solid #2e5688;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(220px,.6fr);gap:28px;align-items:center}
+.hero.hero-new:after{display:none}
+.hero-new .hero-content{position:relative;z-index:1;min-width:0}
+.hero-kicker{display:inline-block;padding:8px 14px;background:#ffffff16;border:1px solid #ffffff25;border-radius:999px;color:#ffda8a;font-size:13px}
+.hero.hero-new h1{font-size:clamp(32px,4vw,55px);line-height:1.25;margin:18px 0}
+.hero.hero-new p{font-size:clamp(15px,1.4vw,19px);line-height:1.9;color:#e4efff}
+.hero-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:24px 0}
+.hero-actions a{display:inline-flex!important;align-items:center;justify-content:center;border-radius:12px!important;min-height:46px}
+.hero-actions .hero-secondary-action{background:transparent!important;color:#fff!important;border:1px solid #b5cbea!important}
+.hero-search{max-width:510px;margin-top:12px}
+.hero-search label{display:block;color:#e6efff;font-size:13px;margin-bottom:9px}
+.hero-search>div{display:flex;background:#fff;padding:5px;border-radius:12px;gap:6px}
+.hero-search input{min-width:0;flex:1;padding:12px 15px;border:0;outline-offset:-3px;background:transparent;color:#173b68;font:inherit}
+.hero-search button{background:#f3ae28;color:#142f54;font-weight:800;border-radius:9px;padding:10px 22px}
+.hero-new .hero-art{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.hero-new .hero-art img{width:min(100%,245px);height:auto;filter:drop-shadow(0 18px 24px #0005)}
+.home-live-summary>div,.subject-tile,.course-card{box-shadow:0 8px 26px #08264b0d;transition:transform .18s,box-shadow .18s}
+.subject-tile:hover,.course-card:hover{transform:translateY(-4px);box-shadow:0 15px 32px #08264b20}
+.course-cover{background:linear-gradient(125deg,#0b315d,#1b5b9a)!important;color:#fff!important}
+.course-cover small{color:#ffe0a1!important}
+.course-footer{background:#f3ae28!important;color:#08264b!important;font-weight:800!important;border-radius:10px!important;text-decoration:none}
+.feature-strip{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.feature-strip>div{border:1px solid var(--am-border);background:#fff;border-radius:16px;padding:17px;display:flex;gap:12px;align-items:center;justify-content:center}
+.feature-strip strong{color:#d08d12;font-size:22px}
+.learning-page{background:var(--am-bg)}
+.learning-page .blended-learning{max-width:1320px;width:min(1320px,calc(100% - 36px));background:transparent;border:0;box-shadow:none;padding:0;margin:30px auto}
+.learning-course-heading{background:linear-gradient(110deg,#08264b,#174e89);color:#fff;border-radius:19px;padding:30px 36px;margin-bottom:20px}
+.learning-course-heading h1{color:#fff!important}
+.learning-course-heading .learning-description{color:#e2edfb}
+.learning-eyebrow{color:#f7c76c;font-size:12px;font-weight:700;letter-spacing:1px}
+.learning-course-shell{display:grid;grid-template-columns:minmax(245px,300px) minmax(0,1fr);gap:20px;align-items:start}
+.learning-outline,.learning-course-body{min-width:0}
+.learning-outline{background:#fff;border:1px solid var(--am-border);border-radius:17px;padding:20px;position:sticky;top:18px;max-height:calc(100vh - 36px);overflow-y:auto}
+.learning-outline h2{font-size:18px!important;margin:0 0 15px!important}
+.learning-outline .public-lesson-list{margin:0;gap:8px}
+.learning-outline .public-lesson-row{padding:12px;gap:9px;flex-wrap:wrap}
+.learning-outline .public-lesson-row strong{font-size:13px}
+.learning-outline .public-lesson-number{width:28px;height:28px;font-size:12px}
+.learning-outline .public-lesson-status{width:100%;padding-inline-start:36px}
+.learning-course-body{background:#fff;border:1px solid var(--am-border);border-radius:17px;padding:clamp(17px,3vw,30px);min-height:340px}
+.learning-course-body .learning-stages{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.learning-course-body .learning-lesson{border-radius:14px;box-shadow:0 4px 15px #09264c0a}
+.learning-course-body .learning-video{display:block;width:100%;max-width:100%;aspect-ratio:16/9;background:#06172e;border-radius:13px;margin:18px 0}
+.learning-progress-summary{display:flex;justify-content:space-between;align-items:center;background:#f0f6ff;border:1px solid var(--am-border);border-radius:11px;padding:14px 18px;color:#123e70}
+.learning-progress-summary strong{color:#a96b04;font-size:22px}
+@media(max-width:900px){.hero.hero-new{grid-template-columns:1fr}.hero-new .hero-art{display:none}.learning-course-shell{grid-template-columns:1fr}.learning-outline{position:static;max-height:none}.feature-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.site-header .site-nav{width:100%;justify-content:center;overflow-x:auto}.hero.hero-new{padding:28px 22px}.hero.hero-new h1{font-size:30px}.hero-search>div{flex-wrap:wrap}.hero-search button{flex:1}.feature-strip{gap:8px}.feature-strip>div{padding:12px 8px;font-size:12px}.learning-page .blended-learning{width:calc(100% - 20px);margin:10px auto}.learning-course-heading{padding:23px 20px;border-radius:14px}.learning-course-body,.learning-outline{padding:15px}}
