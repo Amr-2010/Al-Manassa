@@ -39,9 +39,10 @@
  <article class="learning-lesson"><h3>@lesson.Title</h3><p>@lesson.Content</p>
  @if(lesson.VideoProvider=="youtube" && IsYoutubeId(lesson.VideoReference)){
  <iframe class="learning-video" src="@($"https://www.youtube-nocookie.com/embed/{lesson.VideoReference}")" title="@lesson.Title" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
- }else if(lesson.VideoProvider=="hosted" && IsSafeHostedUrl(lesson.VideoReference)){
- <video class="learning-video" controls controlsList="nodownload" preload="metadata" src="@lesson.VideoReference"></video>
+ }else if(lesson.VideoProvider=="hosted"){
+ <video class="learning-video" controls controlsList="nodownload" preload="metadata" src="@($"/api/lessons/{lesson.Id}/video")"></video>
  }
+ @if(string.IsNullOrWhiteSpace(lesson.VideoProvider) || (lesson.VideoProvider=="youtube" && !IsYoutubeId(lesson.VideoReference))){<p class="learning-notice">لم يتم ربط فيديو بهذا الدرس بعد. يمكن للإدارة إضافة رابط YouTube أو رفع فيديو من لوحة إدارة الدروس.</p>}
  @if(lesson.VideoProvider=="link" && IsSafeHostedUrl(lesson.VideoReference)){<p><a href="@lesson.VideoReference" target="_blank" rel="noopener noreferrer">فتح رابط الشرح</a></p>}
  @if(lesson.VideoProvider=="image" && IsSafeHostedUrl(lesson.VideoReference)){<img src="@lesson.VideoReference" alt="@lesson.Title" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" />}
  @if(lessonAssets.TryGetValue(lesson.Id,out var assets)){
@@ -49,9 +50,9 @@
  @if(asset.Mime.StartsWith("image/")){<img src="@($"/api/lesson-assets/{asset.Id}")" alt="@asset.Filename" loading="lazy" style="max-width:100%;height:auto" />}
  else{<p><a href="@($"/api/lesson-assets/{asset.Id}")" target="_blank" rel="noopener">@asset.Filename (PDF)</a></p>}
  }}
- <p>آخر موضع محفوظ للفيديو: @(positions.GetValueOrDefault(lesson.Id)) ثانية</p>
+ @if(lesson.VideoProvider is "youtube" or "hosted"){<p>آخر موضع محفوظ للفيديو: @(positions.GetValueOrDefault(lesson.Id)) ثانية</p>
  <label>الموضع الحالي بالثواني <input type="number" min="0" max="86400" value="@positionInput.GetValueOrDefault(lesson.Id)" @onchange="e=>UpdatePosition(lesson.Id,e.Value?.ToString())" /></label>
- <button @onclick="()=>SavePlayback(lesson.Id)">حفظ موضع الفيديو</button>
+ <button @onclick="()=>SavePlayback(lesson.Id)">حفظ موضع الفيديو</button>}
  <button disabled="@lesson.Completed" @onclick="()=>Complete(lesson.Id)">@(lesson.Completed?"تم إكمال الدرس":"تحديد الدرس مكتملًا")</button>
  </article>
  }
