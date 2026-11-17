@@ -3,6 +3,7 @@
 @rendermode InteractiveServer
 @using AlManassa.Web
 @inject CourseStore Store
+@inject LearningStore Learning
 <PageTitle>المنصة | Al-Manassa</PageTitle>
 <header class="site-header">
   <a class="brand" href="/"><img class="official-brand-logo" src="/almanassa-official-logo.webp" alt="المنصة Al-Manassa" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'" /><span class="brand-fallback" style="display:none">المنصة<small>Al-Manassa</small></span></a>
@@ -27,7 +28,7 @@
   @if (loading) { <div class="course-message">جاري تحميل الدورات من قاعدة البيانات...</div> }
   else if (error != null) { <div class="course-message">تعذر تحميل الدورات من قاعدة البيانات. تأكد من إعداد DATABASE_URL وتنفيذ ملف SQL. <button @onclick="Load">إعادة المحاولة</button></div> }
   else if (FilteredCourses.Count == 0) { <div class="course-message">@(string.IsNullOrWhiteSpace(categoryFilter) && string.IsNullOrWhiteSpace(search)?"لا توجد كورسات منشورة بعد.":"لا توجد كورسات منشورة مطابقة للبحث أو القسم المحدد.")</div> }
-  else { <div class="course-grid">@foreach(var course in FilteredCourses) { <article class="course-card"><div class="course-cover"><span>@CategoryIcon(course.Category)</span><small>@(Subjects.FirstOrDefault(x=>x.Key==course.Category)?.Name ?? course.Category)</small></div><div class="course-body"><span class="course-meta">@course.DurationWeeks أسابيع · تعلم مرن</span><h3>@(english ? course.TitleEn : course.TitleAr)</h3><p>@course.Description</p><a class="course-footer" href="@($"/learn/{course.Id}")">ابدأ التعلم ←</a></div></article> }</div> }
+  else { <div class="course-grid">@foreach(var course in FilteredCourses) { <article class="course-card"><div class="course-cover"><span>@CategoryIcon(course.Category)</span><small>@(Subjects.FirstOrDefault(x=>x.Key==course.Category)?.Name ?? course.Category)</small></div><div class="course-body"><span class="course-meta">@course.DurationWeeks أسابيع · تعلم مرن</span><h3>@(english ? course.TitleEn : course.TitleAr)</h3><p>@course.Description</p><div class="course-lessons-preview"><strong>الدروس المتاحة (@(courseLessonTitles.GetValueOrDefault(course.Id)?.Count ?? 0))</strong>@if(courseLessonTitles.TryGetValue(course.Id,out var titles) && titles.Count>0){<ol>@foreach(var title in titles.Take(4)){<li>@title</li>}</ol>@if(titles.Count>4){<small>و @(titles.Count-4) دروس أخرى</small>}}else{<small>لم تُضف دروس بعد</small>}</div><a class="course-footer" href="@($"/learn/{course.Id}")">ابدأ التعلم ←</a></div></article> }</div> }
   </section>
   <section class="join-banner"><div><span class="eyebrow">PERSONAL LEARNING</span><h2>تعلم على طريقتك</h2><p>أنشئ حسابك لمتابعة الدورات المتاحة. سيتم إضافة التوصيات الشخصية وسجل التقدم مع استكمال نظام التعلم.</p></div><AuthorizeView><Authorized><a href="#courses">استكمل التعلم</a></Authorized><NotAuthorized><a href="/register">تسجيل متدرب جديد</a></NotAuthorized></AuthorizeView></section>
   <section class="cta-section" id="about"><h2>رحلتك التعليمية تبدأ من هنا</h2><p>منصة تعليمية عربية برؤية عالمية وتجربة رقمية متكاملة.</p><a href="#courses">تصفح الدورات</a></section>
@@ -47,8 +48,9 @@
  bool loading=true;
  string? error;
  List<CourseItem> courses=new();
+ Dictionary<Guid,List<string>> courseLessonTitles=new();
  protected override async Task OnInitializedAsync() => await Load();
- async Task Load() {loading=true;error=null;try {courses=await Store.PublishedAsync();Subjects=await Store.SubjectsAsync();Paths=await Store.LearningPathsAsync();}catch(Exception){error="Database unavailable";}finally{loading=false;}}
+ async Task Load() {loading=true;error=null;try {courses=await Store.PublishedAsync();Subjects=await Store.SubjectsAsync();Paths=await Store.LearningPathsAsync();foreach(var course in courses){try{courseLessonTitles[course.Id]=(await Learning.PublicLessonTitlesAsync(course.Id)).Select(x=>x.Title).ToList();}catch(Exception){courseLessonTitles[course.Id]=new();}}}catch(Exception){error="Database unavailable";}finally{loading=false;}}
  void ToggleLanguage()=>english=!english;
  string CategoryIcon(string c)=>c.ToLowerInvariant() switch {"technology"=>"✦","programming"=>"⌘","business"=>"◈",_=>"◆"};
 }
