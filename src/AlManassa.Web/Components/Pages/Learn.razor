@@ -9,6 +9,9 @@
 @inject LessonMediaStore Media
 @inject AuthenticationStateProvider Authentication
 @inject ILogger<Learn> Logger
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+@using Microsoft.JSInterop
 <PageTitle>دورتي التعليمية | المنصة</PageTitle>
 <div class="learning-page" dir="rtl">
  <header class="learning-header"><a href="/">المنصة · Al-Manassa</a><nav aria-label="التنقل"><a href="/">الرئيسية</a> · <a href="/#courses">الدورات</a> · <a href="/dashboard">لوحة التحكم</a></nav><span>مساري التعليمي</span></header>
@@ -38,9 +41,9 @@
  @foreach(var lesson in lessons){
  <article class="learning-lesson"><h3>@lesson.Title</h3><p>@lesson.Content</p>
  @if(lesson.VideoProvider=="youtube" && IsYoutubeId(lesson.VideoReference)){
- <iframe class="learning-video" src="@($"https://www.youtube-nocookie.com/embed/{lesson.VideoReference}")" title="@lesson.Title" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+ <iframe class="learning-video" id="@($"lesson-video-{lesson.Id}")" src="@($"https://www.youtube.com/embed/{lesson.VideoReference}?enablejsapi=1&playsinline=1")" title="@lesson.Title" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
  }else if(lesson.VideoProvider=="hosted"){
- <video class="learning-video" controls controlsList="nodownload" preload="metadata" src="@($"/api/lessons/{lesson.Id}/video")"></video>
+ <video class="learning-video" id="@($"lesson-video-{lesson.Id}")" controls controlsList="nodownload" preload="metadata" src="@($"/api/lessons/{lesson.Id}/video")"></video>
  }
  @if(string.IsNullOrWhiteSpace(lesson.VideoProvider) || (lesson.VideoProvider=="youtube" && !IsYoutubeId(lesson.VideoReference))){<p class="learning-notice">لم يتم ربط فيديو بهذا الدرس بعد. يمكن للإدارة إضافة رابط YouTube أو رفع فيديو من لوحة إدارة الدروس.</p>}
  @if(lesson.VideoProvider=="link" && IsSafeHostedUrl(lesson.VideoReference)){<p><a href="@lesson.VideoReference" target="_blank" rel="noopener noreferrer">فتح رابط الشرح</a></p>}
@@ -50,10 +53,10 @@
  @if(asset.Mime.StartsWith("image/")){<img src="@($"/api/lesson-assets/{asset.Id}")" alt="@asset.Filename" loading="lazy" style="max-width:100%;height:auto" />}
  else{<p><a href="@($"/api/lesson-assets/{asset.Id}")" target="_blank" rel="noopener">@asset.Filename (PDF)</a></p>}
  }}
- @if(lesson.VideoProvider is "youtube" or "hosted"){<p>آخر موضع محفوظ للفيديو: @(positions.GetValueOrDefault(lesson.Id)) ثانية</p>
- <label>الموضع الحالي بالثواني <input type="number" min="0" max="86400" value="@positionInput.GetValueOrDefault(lesson.Id)" @onchange="e=>UpdatePosition(lesson.Id,e.Value?.ToString())" /></label>
- <button @onclick="()=>SavePlayback(lesson.Id)">حفظ موضع الفيديو</button>}
- <button disabled="@lesson.Completed" @onclick="()=>Complete(lesson.Id)">@(lesson.Completed?"تم إكمال الدرس":"تحديد الدرس مكتملًا")</button>
+ @if(lesson.VideoProvider is "youtube" or "hosted"){
+ <p class="video-watch-status">@(lesson.Completed?"✓ اكتمل الدرس":watchedVideos.Contains(lesson.Id)?"✓ تمت مشاهدة الفيديو بالكامل":"شاهد الفيديو كاملًا لإتاحة إكمال الدرس")</p>
+ }else if(!lesson.Completed){<p class="learning-notice">يلزم ربط فيديو بالدرس قبل السماح بإكماله.</p>}
+ <button disabled="@(lesson.Completed || !watchedVideos.Contains(lesson.Id) || completingLesson)" @onclick="()=>Complete(lesson.Id)">@(lesson.Completed?"✓ تم إكمال الدرس":"إكمال الدرس بعد مشاهدة الفيديو")</button>
  </article>
  }
  <h2>أسئلة الدروس</h2>
@@ -92,6 +95,7 @@
  List<StageInfo> stages=new();List<LessonInfo> lessons=new();List<QuestionInfo> questions=new();List<QuestionInfo> finalQuestions=new();
  Dictionary<Guid,List<(Guid Id,string Filename,string Mime)>> lessonAssets=new();
  Dictionary<Guid,int> positions=new(),positionInput=new();
+ HashSet<Guid> watchedVideos=new();bool completingLesson;DotNetObjectReference<Learn>? videoCallback;
  Dictionary<Guid,Guid> answers=new();Dictionary<Guid,Guid> finalAnswers=new();CertificateInfo? certificate;
  protected override async Task OnInitializedAsync(){
    var state=await Authentication.GetAuthenticationStateAsync();
@@ -120,11 +124,24 @@
     try{positions[lesson.Id]=await Media.PositionAsync(userId,lesson.Id);}catch(Exception ex){Logger.LogWarning(ex,"Failed to load playback position for lesson {LessonId}",lesson.Id);positions[lesson.Id]=0;}
     positionInput[lesson.Id]=positions.GetValueOrDefault(lesson.Id);
    }
-   answers.Clear();message=null;
+   watchedVideos.Clear();answers.Clear();message=null;
  }
+ protected override async Task OnAfterRenderAsync(bool firstRender){
+  if(!enrolled||lessons.Count==0)return;
+  try{
+   videoCallback ??= DotNetObjectReference.Create(this);
+   await JS.InvokeVoidAsync("alManassaWatch.attach",videoCallback,lessons.Where(l=>!l.Completed && l.VideoProvider is "youtube" or "hosted").Select(l=>new {id=l.Id.ToString(),provider=l.VideoProvider}).ToArray());
+  }catch(JSException ex){Logger.LogWarning(ex,"Video watch monitoring unavailable");}
+ }
+ [JSInvokable] public async Task VideoEnded(string lessonId){
+  if(Guid.TryParse(lessonId,out var id) && lessons.Any(l=>l.Id==id && !l.Completed && l.VideoProvider is "youtube" or "hosted")){
+   watchedVideos.Add(id);await InvokeAsync(StateHasChanged);
+  }
+ }
+ public async ValueTask DisposeAsync(){videoCallback?.Dispose();await Task.CompletedTask;}
  void UpdatePosition(Guid id,string? raw){if(int.TryParse(raw,out var seconds))positionInput[id]=Math.Clamp(seconds,0,86400);}
  async Task SavePlayback(Guid id){await Media.SavePositionAsync(userId,id,positionInput.GetValueOrDefault(id));positions[id]=positionInput.GetValueOrDefault(id);message="تم حفظ موضع الفيديو في قاعدة البيانات";}
- async Task Complete(Guid id){await Learning.CompleteLessonAsync(userId,id);if(activeStage is Guid sid)lessons=await Learning.LessonsAsync(userId,sid);}
+ async Task Complete(Guid id){if(!watchedVideos.Contains(id)||completingLesson)return;completingLesson=true;try{var ok=await Learning.CompleteLessonAsync(userId,id);message=ok?"تم إكمال الدرس بنجاح":"تعذر إكمال الدرس، تحقق من ترتيب الدروس";if(activeStage is Guid sid)lessons=await Learning.LessonsAsync(userId,sid);}catch(Exception ex){Logger.LogError(ex,"Lesson completion failed {LessonId}",id);message="تعذر إكمال الدرس حاليًا";}finally{completingLesson=false;}}
  void Choose(Guid q,Guid o)=>answers[q]=o;
  void ChooseFinal(Guid q,Guid o)=>finalAnswers[q]=o;
  async Task SubmitStage(){
