@@ -15,8 +15,8 @@
    const id=item.id,el=document.getElementById("lesson-video-"+id);
    if(!el)continue;
    const existing=active.get(id);
-   if(existing && existing.el===el){existing.dotnet=dotnet;continue;}
-   if(existing){try{existing.player?.destroy();}catch(_){}active.delete(id);}
+   if(existing && (existing.el===el || (existing.player && existing.player.getIframe?.()===el))){existing.dotnet=dotnet;continue;}
+   if(existing){if(existing.timer)clearInterval(existing.timer);try{existing.player?.destroy();}catch(_){}active.delete(id);}
    const entry={el,dotnet,ended:false,maxTime:0};active.set(id,entry);
    const finish=()=>{if(entry.ended)return;entry.ended=true;entry.dotnet.invokeMethodAsync("VideoEnded",id).catch(()=>{entry.ended=false;});};
    if(item.provider==="hosted"){
