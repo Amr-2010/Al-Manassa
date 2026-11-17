@@ -101,7 +101,7 @@ app.MapPost("/login", async (HttpContext ctx, IAntiforgery af, AuthStore users) 
     var returnUrl=form["returnUrl"].ToString();
     if(email.Length>320||password.Length>1024) return Results.BadRequest();
     var account=await users.ValidateAsync(email,password);
-    if(account is null) return Results.Content("بيانات الدخول غير صحيحة. <a href='/login'>حاول مرة أخرى</a>","text/html; charset=utf-8",statusCode:401);
+    if(account is null) return Results.Content(AuthErrorPage(),"text/html; charset=utf-8",statusCode:401);
     var claims=new[]{new Claim(ClaimTypes.NameIdentifier,account.Value.Id.ToString()),new Claim(ClaimTypes.Email,email),new Claim(ClaimTypes.Name,email.Split('@')[0]),new Claim(ClaimTypes.Role,account.Value.Role)}.Concat(account.Value.Role=="SuperAdmin"?new[]{new Claim(ClaimTypes.Role,"Admin")}:Array.Empty<Claim>()).ToArray();
     await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,new ClaimsPrincipal(new ClaimsIdentity(claims,CookieAuthenticationDefaults.AuthenticationScheme)),new AuthenticationProperties { IsPersistent=remember, AllowRefresh=true, ExpiresUtc=remember?DateTimeOffset.UtcNow.AddDays(30):DateTimeOffset.UtcNow.AddHours(8) });
     var defaultDestination=account.Value.Role is "Admin" or "SuperAdmin"?"/dashboard":"/";
@@ -280,3 +280,8 @@ static string AuthPage(string title,string action,string token,string returnUrl=
 }
 
 record CurriculumInput(string Topic,string Level,string Language,int DurationWeeks);
+
+static string AuthErrorPage() => """
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تعذر تسجيل الدخول | المنصة</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#edf3fb;color:#183b69;font-family:Tahoma,Arial,sans-serif}main{width:min(430px,90vw);box-sizing:border-box;padding:32px;background:#fff;border-radius:18px;box-shadow:0 14px 42px #172e5022;text-align:center}h1{font-size:23px}p{line-height:1.9}a{display:inline-block;margin-top:12px;padding:12px 24px;background:#254e7e;color:#fff;text-decoration:none;border-radius:9px}</style></head><body><main><h1>تعذر تسجيل الدخول</h1><p>البريد الإلكتروني أو كلمة المرور غير صحيحة. للمدير الجديد استخدم البريد وكلمة المرور المحددين عند إنشاء حسابه، وليس كلمة Admin كاسم مستخدم.</p><a href="/login">العودة إلى تسجيل الدخول</a></main></body></html>
+""";
