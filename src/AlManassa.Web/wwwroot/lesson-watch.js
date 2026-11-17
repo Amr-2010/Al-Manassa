@@ -16,7 +16,7 @@
   const duration=Math.round(entry.duration||0);
   if(duration<1)return;
   entry.lastSave=now;
-  entry.dotnet.invokeMethodAsync("VideoProgress",entry.id,Math.floor(entry.position),Math.floor(entry.maxTime),duration).catch(()=>{});
+  return entry.dotnet.invokeMethodAsync("VideoProgress",entry.id,Math.floor(entry.position),Math.floor(entry.maxTime),duration).catch(()=>{});
  }
  function advance(entry,t,duration){
   if(!Number.isFinite(t)||!Number.isFinite(duration)||duration<=0)return false;
@@ -35,8 +35,7 @@
   if(entry.ended||!entry.duration||entry.maxTime<entry.duration-2)return;
   entry.ended=true;
   entry.position=entry.duration;entry.maxTime=entry.duration;
-  progress(entry,true);
-  entry.dotnet.invokeMethodAsync("VideoEnded",entry.id).catch(()=>{entry.ended=false;});
+  Promise.resolve(progress(entry,true)).then(()=>entry.dotnet.invokeMethodAsync("VideoEnded",entry.id)).catch(()=>{entry.ended=false;});
  }
  window.alManassaWatch={attach:async function(dotnet,lessons){
   for(const item of lessons){
