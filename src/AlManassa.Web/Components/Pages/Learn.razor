@@ -10,22 +10,22 @@
 @inject AuthenticationStateProvider Authentication
 <PageTitle>دورتي التعليمية | المنصة</PageTitle>
 <div class="learning-page" dir="rtl">
- <header class="learning-header"><a href="/">المنصة · Al-Manassa</a><nav aria-label="التنقل"><a href="/">الرئيسية</a> · <a href="/#courses">الدورات</a> · <a href="/#pathways">المسارات</a> · <a href="/#certificates">الشهادات</a> · <a href="/dashboard">لوحة التحكم</a></nav><span>مساري التعليمي</span></header>
- <main>
+ <header class="learning-header"><a href="/">المنصة · Al-Manassa</a><nav aria-label="التنقل"><a href="/">الرئيسية</a> · <a href="/#courses">الدورات</a> · <a href="/dashboard">لوحة التحكم</a></nav><span>مساري التعليمي</span></header>
+ <main class="learning-main">
  <h1>@(courseTitle ?? "مراحل الدورة التعليمية")</h1>
  @if(!string.IsNullOrWhiteSpace(courseDescription)){<p class="learning-description">@courseDescription</p>}
- <h2>مراحل الدورة التعليمية</h2>
+ <h2>دروس الكورس</h2>
  @if(courseTitle is null){<div class="learning-notice">تعذر العثور على هذه الدورة أو أنها غير منشورة. <a href="/">العودة إلى الدورات</a></div>}
- else if(stages.Count==0){<div class="learning-notice">محتوى هذه الدورة لم يُنشر بعد. لا توجد مراحل تعليمية متاحة حاليًا. يرجى مراجعة إدارة المنصة.</div>}
+ else if(stages.Count==0){<div class="learning-notice">لم تُضف دروس لهذا الكورس بعد. يمكن للإدارة إضافتها من لوحة التحكم.</div>}
  @if(!string.IsNullOrWhiteSpace(message)){<div class="learning-notice">@message</div>}
  @if(courseTitle is not null && stages.Count>0 && !enrolled){<p>سجّل في الدورة للوصول إلى المحتوى.</p><button @onclick="Enroll">التحاق بالدورة</button>}
  else if(enrolled && stages.Count>0) {
- <p>المراحل المكتملة: @stages.Count(x=>x.Passed) من @stages.Count</p>
- <button @onclick="ResumeLearning">استكمال التعلم من آخر مرحلة</button>
+ <p>الأجزاء المكتملة: @stages.Count(x=>x.Passed) من @stages.Count</p>
+ <button @onclick="ResumeLearning">استكمال التعلم</button>
  <div class="learning-stages">
  @foreach(var stage in stages){
  <button class="learning-stage @(stage.Passed?"completed":"")" @onclick="()=>OpenStage(stage.Id)">
-  <strong>@stage.Position. @stage.Title</strong><span>@(stage.Passed?"✓ اجتازت":"عرض المرحلة")</span>
+  <strong>عرض دروس الكورس @(stages.Count>1?$"· المجموعة {stage.Position}":"")</strong><span>@(stage.Passed?"✓ مكتمل":"فتح الدروس")</span>
  </button>
  }
  </div>
@@ -51,13 +51,13 @@
  <button disabled="@lesson.Completed" @onclick="()=>Complete(lesson.Id)">@(lesson.Completed?"تم إكمال الدرس":"تحديد الدرس مكتملًا")</button>
  </article>
  }
- <h2>اختبار المرحلة</h2>
- @if(questions.Count==0){<p>لم تُضف أسئلة لهذه المرحلة بعد. لا يمكن اجتيازها قبل إعداد الاختبار.</p>}
+ <h2>أسئلة الدروس</h2>
+ @if(questions.Count==0){<p>لم تُضف أسئلة لهذا الجزء بعد.</p>}
  else { @foreach(var q in questions){<fieldset class="learning-question"><legend>@q.Prompt</legend>@foreach(var o in q.Options){<label><input type="radio" name="@q.Id" checked="@(answers.GetValueOrDefault(q.Id)==o.Id)" @onchange="()=>Choose(q.Id,o.Id)" /> @o.Label</label>}</fieldset>}
- <button @onclick="SubmitStage" disabled="@(answers.Count!=questions.Count)">تسليم اختبار المرحلة</button> }
+ <button @onclick="SubmitStage" disabled="@(answers.Count!=questions.Count)">تسليم أسئلة الدروس</button> }
  </section>
  }
- <section class="learning-panel"><h2>الامتحان النهائي</h2><p>20 سؤالًا بعد اجتياز جميع المراحل. النجاح من 70%.</p>
+ <section class="learning-panel"><h2>الامتحان النهائي</h2><p>20 سؤالًا بعد إكمال الدروس المطلوبة. النجاح من 70%.</p>
  @if(finalQuestions.Count>0){
  @foreach(var q in finalQuestions){<fieldset class="learning-question"><legend>@q.Prompt</legend>@foreach(var o in q.Options){<label><input type="radio" name="@q.Id" checked="@(finalAnswers.GetValueOrDefault(q.Id)==o.Id)" @onchange="()=>ChooseFinal(q.Id,o.Id)" /> @o.Label</label>}</fieldset>}
  <button disabled="@(finalAnswers.Count!=20)" @onclick="SubmitFinal">تسليم الامتحان النهائي</button>
@@ -88,7 +88,7 @@
  protected override async Task OnInitializedAsync(){
    var state=await Authentication.GetAuthenticationStateAsync();
    if(!Guid.TryParse(state.User.FindFirstValue(ClaimTypes.NameIdentifier),out userId)){message="يجب تسجيل الدخول أولًا";return;}
-   try {var info=await Learning.CourseInfoAsync(CourseId);courseTitle=info?.Title;courseDescription=info?.Description;await Refresh();}
+   try {var info=await Learning.CourseInfoAsync(CourseId);courseTitle=info?.Title;courseDescription=info?.Description;await Refresh();if(enrolled && stages.Count>0)await OpenStage(stages[0].Id);}
    catch(Exception){message="تعذر تحميل محتوى الدورة من قاعدة البيانات. يرجى المحاولة لاحقًا.";}
  }
  async Task Refresh(){
