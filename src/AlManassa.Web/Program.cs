@@ -91,7 +91,7 @@ app.MapGet("/login", (HttpContext ctx, IAntiforgery af) => {
 app.MapGet("/register", (HttpContext ctx, IAntiforgery af) => {
     if(ctx.User.Identity?.IsAuthenticated==true) return Results.Redirect(ctx.User.IsInRole("Admin")?"/dashboard":"/");
     var token=af.GetAndStoreTokens(ctx).RequestToken;
-    return Results.Content(AuthPage("إنشاء حساب طالب","/register",token!),"text/html; charset=utf-8");
+    return Results.Content(AuthPage("إنشاء حساب متدرب","/register",token!),"text/html; charset=utf-8");
 });
 app.MapPost("/login", async (HttpContext ctx, IAntiforgery af, AuthStore users) => {
     if(!await af.IsRequestValidAsync(ctx)) return Results.BadRequest("Invalid form token");
@@ -276,7 +276,7 @@ static string AuthPage(string title,string action,string token,string returnUrl=
     var passwordAutocomplete=endpoint=="/login"?"current-password":"new-password";
     var passwordMinimum=endpoint=="/login"?"1":"12";
     var switchLink=endpoint=="/login"?"/register":"/login";
-    var switchText=endpoint=="/login"?"إنشاء حساب طالب جديد":"لديك حساب بالفعل؟";
+    var switchText=endpoint=="/login"?"إنشاء حساب متدرب جديد":"لديك حساب بالفعل؟";
     var safeReturn=returnUrl.StartsWith("/") && !returnUrl.StartsWith("//") && !returnUrl.Contains("\\") ? returnUrl : "/";
     return "<!doctype html><html lang='ar' dir='rtl'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>"+heading+
         " | المنصة</title><style>body{margin:0;background:#edf3fb;color:#183b69;font-family:Tahoma,Arial;display:grid;min-height:100vh;place-items:center}main{width:min(390px,90vw);background:white;padding:34px;border-radius:22px;box-shadow:0 15px 45px #11143d22}label{display:block;margin:18px 0 7px}input{box-sizing:border-box;width:100%;padding:13px;border:1px solid #d4d5e2;border-radius:10px}button{width:100%;margin-top:22px;background:#254e7e;color:#ffd96d;padding:15px;border:0;border-radius:10px;font-size:16px}a{color:#db8900}</style></head><body><main><h1>"+heading+
