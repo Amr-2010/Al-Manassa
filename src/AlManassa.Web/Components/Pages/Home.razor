@@ -25,11 +25,19 @@
   <div class="course-ticker-heading"><strong>الكورسات المتاحة</strong><span>اضغط على أي كورس لفتح صفحته مباشرة</span></div>
   @if(courses.Count>0){
     <div class="course-ticker-viewport" dir="rtl">
-      <div class="course-ticker-track"><div class="course-ticker-copy">
-        @foreach(var course in courses){<a class="course-ticker-link" href="@($"/learn/{course.Id}")"><span class="ticker-dot">✦</span>@course.TitleAr</a>}
-        </div><div class="course-ticker-copy" aria-hidden="true">
-        @foreach(var course in courses){<a class="course-ticker-link" href="@($"/learn/{course.Id}")" tabindex="-1"><span class="ticker-dot">✦</span>@course.TitleAr</a>}
-      </div></div>
+      <div class="course-ticker-track">
+        <div class="course-ticker-copy">
+          @foreach(var course in courses){<a class="course-ticker-link" href="@($"/learn/{course.Id}")"><span class="ticker-dot">✦</span>@course.TitleAr</a>}
+          @for(var repeat=0;repeat<9;repeat++){
+            @foreach(var course in courses){<a class="course-ticker-link" href="@($"/learn/{course.Id}")" tabindex="-1" aria-hidden="true"><span class="ticker-dot">✦</span>@course.TitleAr</a>}
+          }
+        </div>
+        <div class="course-ticker-copy" aria-hidden="true">
+          @for(var repeat=0;repeat<10;repeat++){
+            @foreach(var course in courses){<a class="course-ticker-link" href="@($"/learn/{course.Id}")" tabindex="-1"><span class="ticker-dot">✦</span>@course.TitleAr</a>}
+          }
+        </div>
+      </div>
     </div>
   }else{<p class="course-message">لا توجد كورسات منشورة حاليًا.</p>}
 </section>
