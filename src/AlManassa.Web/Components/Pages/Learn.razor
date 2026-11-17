@@ -100,8 +100,7 @@
  List<StageInfo> stages=new();List<LessonInfo> lessons=new();List<QuestionInfo> questions=new();List<QuestionInfo> finalQuestions=new();
  Dictionary<Guid,List<(Guid Id,string Filename,string Mime)>> lessonAssets=new();
  Dictionary<Guid,int> positions=new(),positionInput=new(),watchedSeconds=new(),videoDurations=new();
- int TotalWatched=>watchedSeconds.Values.Sum();
- int TotalDuration=>videoDurations.Values.Sum();
+ long TotalWatched,TotalDuration;
  HashSet<Guid> watchedVideos=new();bool completingLesson;DotNetObjectReference<Learn>? videoCallback;
  Dictionary<Guid,Guid> answers=new();Dictionary<Guid,Guid> finalAnswers=new();CertificateInfo? certificate;
  protected override async Task OnInitializedAsync(){
@@ -114,6 +113,7 @@
    stages=await Learning.StagesAsync(userId,CourseId);
    enrolled=stages.Any(s=>s.Enrolled);
    certificate=await Learning.CertificateAsync(userId,CourseId);
+   (TotalWatched,TotalDuration)=await Media.CourseWatchTotalsAsync(userId,CourseId);
  }
  async Task Enroll(){enrolled=await Learning.EnrollAsync(userId,CourseId);await Refresh();if(!enrolled)message="الدورة غير متاحة للتسجيل";else if(stages.Count>0)await OpenStage(stages[0].Id);}
  async Task ResumeLearning(){
@@ -131,6 +131,7 @@
     try{var progress=await Media.WatchProgressAsync(userId,lesson.Id);positions[lesson.Id]=progress.Position;watchedSeconds[lesson.Id]=progress.Watched;videoDurations[lesson.Id]=progress.Duration;}catch(Exception ex){Logger.LogWarning(ex,"Failed to load playback position for lesson {LessonId}",lesson.Id);positions[lesson.Id]=0;}
     positionInput[lesson.Id]=positions.GetValueOrDefault(lesson.Id);
    }
+   (TotalWatched,TotalDuration)=await Media.CourseWatchTotalsAsync(userId,CourseId);
    watchedVideos.Clear();answers.Clear();message=null;
  }
  protected override async Task OnAfterRenderAsync(bool firstRender){
@@ -145,6 +146,7 @@
   try{
    await Media.SaveWatchProgressAsync(userId,id,position,watched,duration);
    positions[id]=position;watchedSeconds[id]=Math.Max(watchedSeconds.GetValueOrDefault(id),watched);videoDurations[id]=duration;
+   (TotalWatched,TotalDuration)=await Media.CourseWatchTotalsAsync(userId,CourseId);
    await InvokeAsync(StateHasChanged);
   }catch(Exception ex){Logger.LogWarning(ex,"Video progress save failed for {LessonId}",id);}
  }
