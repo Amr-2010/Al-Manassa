@@ -14,9 +14,11 @@
  <main class="learning-main">
  <h1>@(courseTitle ?? "مراحل الدورة التعليمية")</h1>
  @if(!string.IsNullOrWhiteSpace(courseDescription)){<p class="learning-description">@courseDescription</p>}
- <h2>دروس الكورس</h2>
+ <h2>دروس الكورس (@publicLessons.Count)</h2>
+ @if(publicLessons.Count>0){<div class="public-lesson-list">@foreach(var item in publicLessons.Select((lesson,index)=>(lesson,index))){<div class="public-lesson-row"><span class="public-lesson-number">@(item.index+1)</span><strong>@item.lesson.Title</strong><span class="public-lesson-status">@(enrolled?"متاح بعد فتح الدرس":"سجّل في الكورس لبدء التعلم")</span></div>}</div>}
+ else if(courseTitle is not null){<div class="learning-notice">هذا الكورس منشور لكن لا توجد دروس مضافة له في قاعدة البيانات حتى الآن. يجب إضافة الدروس من لوحة الإدارة.</div>}
  @if(courseTitle is null){<div class="learning-notice">تعذر العثور على هذه الدورة أو أنها غير منشورة. <a href="/">العودة إلى الدورات</a></div>}
- else if(stages.Count==0){<div class="learning-notice">لم تُضف دروس لهذا الكورس بعد. يمكن للإدارة إضافتها من لوحة التحكم.</div>}
+ 
  @if(!string.IsNullOrWhiteSpace(message)){<div class="learning-notice">@message</div>}
  @if(courseTitle is not null && stages.Count>0 && !enrolled){<p>سجّل في الدورة للوصول إلى المحتوى.</p><button @onclick="Enroll">التحاق بالدورة</button>}
  else if(enrolled && stages.Count>0) {
@@ -81,6 +83,7 @@
  [Parameter] public Guid CourseId{get;set;}
  string? courseTitle,courseDescription;
  Guid userId;bool enrolled;Guid? activeStage;string? message;
+ List<(Guid Id,string Title)> publicLessons=new();
  List<StageInfo> stages=new();List<LessonInfo> lessons=new();List<QuestionInfo> questions=new();List<QuestionInfo> finalQuestions=new();
  Dictionary<Guid,List<(Guid Id,string Filename,string Mime)>> lessonAssets=new();
  Dictionary<Guid,int> positions=new(),positionInput=new();
@@ -88,7 +91,7 @@
  protected override async Task OnInitializedAsync(){
    var state=await Authentication.GetAuthenticationStateAsync();
    if(!Guid.TryParse(state.User.FindFirstValue(ClaimTypes.NameIdentifier),out userId)){message="يجب تسجيل الدخول أولًا";return;}
-   try {var info=await Learning.CourseInfoAsync(CourseId);courseTitle=info?.Title;courseDescription=info?.Description;await Refresh();if(enrolled && stages.Count>0)await OpenStage(stages[0].Id);}
+   try {var info=await Learning.CourseInfoAsync(CourseId);courseTitle=info?.Title;courseDescription=info?.Description;publicLessons=await Learning.PublicLessonTitlesAsync(CourseId);await Refresh();if(enrolled && stages.Count>0)await OpenStage(stages[0].Id);}
    catch(Exception){message="تعذر تحميل محتوى الدورة من قاعدة البيانات. يرجى المحاولة لاحقًا.";}
  }
  async Task Refresh(){
@@ -96,7 +99,7 @@
    enrolled=stages.Any(s=>s.Enrolled);
    certificate=await Learning.CertificateAsync(userId,CourseId);
  }
- async Task Enroll(){enrolled=await Learning.EnrollAsync(userId,CourseId);await Refresh();if(!enrolled)message="الدورة غير متاحة للتسجيل";}
+ async Task Enroll(){enrolled=await Learning.EnrollAsync(userId,CourseId);await Refresh();if(!enrolled)message="الدورة غير متاحة للتسجيل";else if(stages.Count>0)await OpenStage(stages[0].Id);}
  async Task ResumeLearning(){
    var stageId=await Learning.ResumeStageAsync(userId,CourseId);
    if(stageId is Guid id)await OpenStage(id);
