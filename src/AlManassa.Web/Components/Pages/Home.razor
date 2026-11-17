@@ -6,28 +6,29 @@
 <PageTitle>المنصة | Al-Manassa</PageTitle>
 <header class="site-header">
   <a class="brand" href="/"><img class="official-brand-logo" src="/almanassa-official-logo.webp" alt="المنصة Al-Manassa" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'" /><span class="brand-fallback" style="display:none">المنصة<small>Al-Manassa</small></span></a>
-  <nav class="site-nav"><a href="#subjects">التخصصات</a><a href="#courses">الدورات</a><a href="#tracks">المسارات</a><a href="#certificates">الشهادات</a><a href="#about">عن المنصة</a></nav>
-  <div class="header-actions"><button @onclick="ToggleLanguage">@(english ? "العربية" : "English")</button><AuthorizeView Context="auth"><Authorized><span class="signed-in-name">مرحبًا، @(auth.User.Identity?.Name ?? auth.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "مستخدم المنصة")</span><a class="dash-link" href="@(auth.User.IsInRole("Admin") ? "/dashboard" : "/")">@(auth.User.IsInRole("Admin") ? "لوحة الإدارة" : "دوراتي")</a><form method="post" action="/logout"><AntiforgeryToken /><button type="submit">خروج</button></form></Authorized><NotAuthorized><a class="dash-link" href="/login">تسجيل الدخول</a><a class="dash-link" href="/register">تسجيل طالب جديد</a></NotAuthorized></AuthorizeView></div>
+  <nav class="site-nav"><a href="#subjects">التخصصات</a><a href="#courses">الدورات</a><a href="#about">عن المنصة</a></nav>
+  <div class="header-actions"><button @onclick="ToggleLanguage">@(english ? "العربية" : "English")</button><AuthorizeView Context="auth"><Authorized><span class="signed-in-name">مرحبًا، @(auth.User.Identity?.Name ?? auth.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "مستخدم المنصة")</span><a class="dash-link" href="@(auth.User.IsInRole("Admin") ? "/dashboard" : "/")">@(auth.User.IsInRole("Admin") ? "لوحة الإدارة" : "دوراتي")</a><form method="post" action="/logout"><AntiforgeryToken /><button type="submit">خروج</button></form></Authorized><NotAuthorized><a class="dash-link" href="/login">تسجيل الدخول</a><a class="dash-link" href="/register">تسجيل متدرب جديد</a></NotAuthorized></AuthorizeView></div>
 </header>
 <main dir="@(english ? "ltr" : "rtl")">
   <section class="hero hero-new"><div class="hero-content"><span class="eyebrow">AL-MANASSA · LEARN WITHOUT LIMITS</span><h1>@(english ? "Your next skill starts here." : "مستقبلك يبدأ بمهارة جديدة")</h1><p>@(english ? "Explore flexible courses designed for the skills of tomorrow." : "اكتشف دورات ومسارات تعليمية تساعدك على تطوير مهاراتك وتحقيق أهدافك.")</p><a href="#courses">@(english ? "Explore courses" : "استكشف الدورات")</a></div><div class="hero-art"><img class="hero-official-logo" src="/almanassa-official-logo.webp" alt="المنصة Al-Manassa" /><span>Learn · Grow · Achieve</span></div></section>
+  <section class="home-live-summary" aria-label="محتوى المنصة"><div><strong>@Subjects.Count</strong><span>قسم تعليمي متاح</span></div><div><strong>@courses.Count</strong><span>كورس منشور</span></div><div><strong>@(Subjects.Count==0?0:Subjects.Count(x=>courses.Any(c=>c.Category==x.Key)))</strong><span>قسم به كورسات منشورة</span></div></section>
   <section class="feature-strip" id="features"><div><strong>01</strong><span>تعلم بالسرعة المناسبة لك</span></div><div><strong>02</strong><span>مسارات تعليمية متنوعة</span></div><div><strong>03</strong><span>تجربة متوافقة مع جميع الأجهزة</span></div></section>
   <section class="catalog-section" id="subjects">
 <div class="section-heading"><div><span class="eyebrow">EXPLORE BY SUBJECT</span><h2>استكشف التخصصات التعليمية</h2></div><p>اختر المجال الذي يناسب أهدافك المهنية</p></div>
 <div class="subject-grid">
-@foreach(var subject in Subjects){<button class="subject-tile" @onclick="()=>SelectSubject(subject.Key)"><span class="subject-icon">@subject.Icon</span><strong>@subject.Name</strong><small>عرض الدورات المتاحة</small></button>}
+@foreach(var subject in Subjects){<button class="subject-tile" @onclick="()=>SelectSubject(subject.Key)"><span class="subject-icon">@subject.Icon</span><strong>@subject.Name</strong><small>@courses.Count(c=>c.Category==subject.Key) كورس منشور</small></button>}
 </div></section>
 <section class="learning-paths" id="tracks"><div class="section-heading"><div><span class="eyebrow">LEARNING PATHWAYS</span><h2>اختر طريقة التعلم المناسبة</h2></div></div><div class="path-grid">
 @foreach(var path in Paths){<article><span>@path.Code</span><h3>@path.Title</h3><p>@path.Description</p><a href="@path.Url">اكتشف المزيد</a></article>}
-</div></section>
+</div></section>}
 <section class="course-section" id="courses"><div class="section-heading"><div><span class="eyebrow">EXPLORE COURSES</span><h2>@(english ? "Featured courses" : "اكتشف الدورات التعليمية")</h2></div><p>تعلم في أي وقت ومن أي مكان</p></div>
   <div class="catalog-toolbar"><label>ابحث عن دورة <input type="search" @bind="search" @bind:event="oninput" placeholder="اسم الدورة أو المجال..." /></label><button @onclick="ClearFilters">جميع التخصصات</button>@if(!string.IsNullOrEmpty(categoryFilter)){<span>التخصص: @categoryFilter</span>}</div>
   @if (loading) { <div class="course-message">جاري تحميل الدورات من قاعدة البيانات...</div> }
   else if (error != null) { <div class="course-message">تعذر تحميل الدورات من قاعدة البيانات. تأكد من إعداد DATABASE_URL وتنفيذ ملف SQL. <button @onclick="Load">إعادة المحاولة</button></div> }
-  else if (FilteredCourses.Count == 0) { <div class="course-message">لا توجد دورات منشورة بعد.</div> }
-  else { <div class="course-grid">@foreach(var course in FilteredCourses) { <article class="course-card"><div class="course-cover"><span>@CategoryIcon(course.Category)</span><small>@course.Category</small></div><div class="course-body"><span class="course-meta">@course.DurationWeeks أسابيع · تعلم مرن</span><h3>@(english ? course.TitleEn : course.TitleAr)</h3><p>@course.Description</p><a class="course-footer" href="@($"/learn/{course.Id}")">ابدأ التعلم ←</a></div></article> }</div> }
+  else if (FilteredCourses.Count == 0) { <div class="course-message">@(string.IsNullOrWhiteSpace(categoryFilter) && string.IsNullOrWhiteSpace(search)?"لا توجد كورسات منشورة بعد.":"لا توجد كورسات منشورة مطابقة للبحث أو القسم المحدد.")</div> }
+  else { <div class="course-grid">@foreach(var course in FilteredCourses) { <article class="course-card"><div class="course-cover"><span>@CategoryIcon(course.Category)</span><small>@(Subjects.FirstOrDefault(x=>x.Key==course.Category)?.Name ?? course.Category)</small></div><div class="course-body"><span class="course-meta">@course.DurationWeeks أسابيع · تعلم مرن</span><h3>@(english ? course.TitleEn : course.TitleAr)</h3><p>@course.Description</p><a class="course-footer" href="@($"/learn/{course.Id}")">ابدأ التعلم ←</a></div></article> }</div> }
   </section>
-  <section class="join-banner"><div><span class="eyebrow">PERSONAL LEARNING</span><h2>تعلم على طريقتك</h2><p>أنشئ حسابك لمتابعة الدورات المتاحة. سيتم إضافة التوصيات الشخصية وسجل التقدم مع استكمال نظام التعلم.</p></div><AuthorizeView><Authorized><a href="#courses">استكمل التعلم</a></Authorized><NotAuthorized><a href="/register">تسجيل طالب جديد</a></NotAuthorized></AuthorizeView></section>
+  <section class="join-banner"><div><span class="eyebrow">PERSONAL LEARNING</span><h2>تعلم على طريقتك</h2><p>أنشئ حسابك لمتابعة الدورات المتاحة. سيتم إضافة التوصيات الشخصية وسجل التقدم مع استكمال نظام التعلم.</p></div><AuthorizeView><Authorized><a href="#courses">استكمل التعلم</a></Authorized><NotAuthorized><a href="/register">تسجيل متدرب جديد</a></NotAuthorized></AuthorizeView></section>
   <section class="cta-section" id="about"><h2>رحلتك التعليمية تبدأ من هنا</h2><p>منصة تعليمية عربية برؤية عالمية وتجربة رقمية متكاملة.</p><a href="#courses">تصفح الدورات</a></section>
 </main>
 <footer>© 2026 المنصة | Al-Manassa</footer>
@@ -39,7 +40,7 @@
  (string.IsNullOrWhiteSpace(categoryFilter) || x.Category.Equals(categoryFilter,StringComparison.OrdinalIgnoreCase)) &&
  (string.IsNullOrWhiteSpace(search) || x.TitleAr.Contains(search,StringComparison.OrdinalIgnoreCase) || x.TitleEn.Contains(search,StringComparison.OrdinalIgnoreCase) || x.Category.Contains(search,StringComparison.OrdinalIgnoreCase))
  ).ToList();
- void SelectSubject(string key){categoryFilter=key;}
+ void SelectSubject(string key){categoryFilter=key;search="";}
  void ClearFilters(){categoryFilter="";search="";}
  bool english;
  bool loading=true;
