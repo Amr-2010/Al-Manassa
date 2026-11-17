@@ -135,7 +135,7 @@
  }
  [JSInvokable] public async Task VideoEnded(string lessonId){
   if(Guid.TryParse(lessonId,out var id) && lessons.Any(l=>l.Id==id && !l.Completed && l.VideoProvider is "youtube" or "hosted")){
-   watchedVideos.Add(id);await InvokeAsync(StateHasChanged);
+   try{await Learning.MarkVideoWatchedAsync(userId,id);watchedVideos.Add(id);await InvokeAsync(StateHasChanged);}catch(Exception ex){Logger.LogError(ex,"Could not record video completion {LessonId}",id);message="تعذر تسجيل انتهاء الفيديو. حاول إعادة تحميل الصفحة.";await InvokeAsync(StateHasChanged);}
   }
  }
  public async ValueTask DisposeAsync(){videoCallback?.Dispose();await Task.CompletedTask;}
