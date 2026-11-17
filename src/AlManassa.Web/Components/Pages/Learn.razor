@@ -54,9 +54,9 @@
  else{<p><a href="@($"/api/lesson-assets/{asset.Id}")" target="_blank" rel="noopener">@asset.Filename (PDF)</a></p>}
  }}
  @if(lesson.VideoProvider is "youtube" or "hosted"){
- <p class="video-watch-status">@(lesson.Completed?"✓ اكتمل الدرس":watchedVideos.Contains(lesson.Id)?"✓ تمت مشاهدة الفيديو بالكامل":"شاهد الفيديو كاملًا لإتاحة إكمال الدرس")</p>
+ <p class="video-watch-status">@(lesson.Completed?"✓ اكتمل الدرس":watchedVideos.Contains(lesson.Id)?"✓ انتهى الفيديو، جارٍ تسجيل إكمال الدرس":"شاهد الفيديو كاملًا دون تقديمه لفتح الدرس التالي تلقائيًا")</p>
  }else if(!lesson.Completed){<p class="learning-notice">يلزم ربط فيديو بالدرس قبل السماح بإكماله.</p>}
- <button disabled="@(lesson.Completed || !watchedVideos.Contains(lesson.Id) || completingLesson)" @onclick="()=>Complete(lesson.Id)">@(lesson.Completed?"✓ تم إكمال الدرس":"إكمال الدرس بعد مشاهدة الفيديو")</button>
+ @if(lesson.Completed){<span class="lesson-completed-label">✓ تم إكمال الدرس</span>}else if(watchedVideos.Contains(lesson.Id)){<button disabled="@completingLesson" @onclick="()=>Complete(lesson.Id)">إعادة محاولة تسجيل الإكمال</button>}
  </article>
  }
  <h2>أسئلة الدروس</h2>
@@ -135,13 +135,13 @@
  }
  [JSInvokable] public async Task VideoEnded(string lessonId){
   if(Guid.TryParse(lessonId,out var id) && lessons.Any(l=>l.Id==id && !l.Completed && l.VideoProvider is "youtube" or "hosted")){
-   try{await Learning.MarkVideoWatchedAsync(userId,id);watchedVideos.Add(id);await InvokeAsync(StateHasChanged);}catch(Exception ex){Logger.LogError(ex,"Could not record video completion {LessonId}",id);message="تعذر تسجيل انتهاء الفيديو. حاول إعادة تحميل الصفحة.";await InvokeAsync(StateHasChanged);}
+   try{await Learning.MarkVideoWatchedAsync(userId,id);watchedVideos.Add(id);await InvokeAsync(StateHasChanged);await Complete(id);await InvokeAsync(StateHasChanged);}catch(Exception ex){Logger.LogError(ex,"Could not record video completion {LessonId}",id);message="تعذر تسجيل انتهاء الفيديو. حاول إعادة تحميل الصفحة.";await InvokeAsync(StateHasChanged);}
   }
  }
  public async ValueTask DisposeAsync(){videoCallback?.Dispose();await Task.CompletedTask;}
  void UpdatePosition(Guid id,string? raw){if(int.TryParse(raw,out var seconds))positionInput[id]=Math.Clamp(seconds,0,86400);}
  async Task SavePlayback(Guid id){await Media.SavePositionAsync(userId,id,positionInput.GetValueOrDefault(id));positions[id]=positionInput.GetValueOrDefault(id);message="تم حفظ موضع الفيديو في قاعدة البيانات";}
- async Task Complete(Guid id){if(!watchedVideos.Contains(id)||completingLesson)return;completingLesson=true;try{var ok=await Learning.CompleteLessonAsync(userId,id);message=ok?"تم إكمال الدرس بنجاح":"تعذر إكمال الدرس، تحقق من ترتيب الدروس";if(activeStage is Guid sid)lessons=await Learning.LessonsAsync(userId,sid);}catch(Exception ex){Logger.LogError(ex,"Lesson completion failed {LessonId}",id);message="تعذر إكمال الدرس حاليًا";}finally{completingLesson=false;}}
+ async Task Complete(Guid id){if(!watchedVideos.Contains(id)||completingLesson)return;completingLesson=true;try{var ok=await Learning.CompleteLessonAsync(userId,id);message=ok?"تم إكمال الدرس بنجاح، يمكنك متابعة الدرس التالي.":"لم يُسجّل الإكمال. تحقق من ترتيب الدروس أو حاول مرة أخرى.";if(activeStage is Guid sid)lessons=await Learning.LessonsAsync(userId,sid);}catch(Exception ex){Logger.LogError(ex,"Lesson completion failed {LessonId}",id);message="تعذر إكمال الدرس حاليًا";}finally{completingLesson=false;}}
  void Choose(Guid q,Guid o)=>answers[q]=o;
  void ChooseFinal(Guid q,Guid o)=>finalAnswers[q]=o;
  async Task SubmitStage(){
