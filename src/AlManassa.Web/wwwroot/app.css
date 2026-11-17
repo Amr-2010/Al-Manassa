@@ -255,3 +255,24 @@ main:has(.hero-new) .course-body{display:flex;flex-direction:column;flex:1;gap:5
 main:has(.hero-new) .course-footer{margin-top:auto}
 @media(max-width:900px){.site-header{justify-content:center}.site-header .header-actions{justify-content:center}.home-live-summary{gap:9px}.home-live-summary>div{padding:14px;flex-direction:column;text-align:center}}
 @media(max-width:650px){main:has(.hero-new){padding:14px 12px 35px}.site-header{gap:10px}.site-header .header-actions{width:100%}.home-live-summary{grid-template-columns:1fr 1fr}.home-live-summary>div:last-child{grid-column:1/-1}.home-live-summary strong{font-size:24px}main:has(.hero-new) .catalog-section,main:has(.hero-new) .learning-paths{margin:34px 0}main:has(.hero-new) .hero-new{border-radius:15px}}
+
+/* Learning pages: course-first, readable, responsive */
+.learning-page{min-height:100vh;background:#f1f5fb;color:#13345d;font-size:16px}
+.learning-page .learning-header{background:#0d2c52;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:18px clamp(20px,5vw,72px);border-bottom:3px solid #e8ad36}
+.learning-page .learning-header a{color:#fff;text-decoration:none;font-weight:700}
+.learning-page .learning-header nav{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.learning-page .learning-main{width:min(1080px,calc(100% - 32px));max-width:1080px;margin:34px auto;padding:clamp(22px,4vw,48px);background:#fff;border:1px solid #dde6f2;border-radius:22px;box-shadow:0 16px 50px #12365b13;min-height:480px}
+.learning-page .learning-main h1{font-size:clamp(27px,3vw,40px);color:#143a67;margin:0 0 15px}
+.learning-page .learning-main h2{font-size:22px;margin:30px 0 15px;color:#173b69}
+.learning-page .learning-description{line-height:1.9;color:#536d8d;max-width:760px}
+.learning-page .learning-stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:24px 0}
+.learning-page .learning-stage{background:#f0f5fc;border:1px solid #cfdded;color:#143a67;border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:right;padding:18px}
+.learning-page .learning-stage.completed{border-color:#84b99b;background:#f0faf3}
+.learning-page .learning-panel{padding:24px;margin:22px 0;border:1px solid #dce6f3;border-radius:17px;background:#fbfdff}
+.learning-page .learning-lesson{background:#fff;border:1px solid #dbe5f2;border-radius:14px;padding:24px;margin:15px 0;line-height:1.85}
+.learning-page .learning-lesson h3{margin-top:0;color:#173b69}
+.learning-page .learning-video{width:100%;max-width:760px;aspect-ratio:16/9;border:0;border-radius:12px}
+.learning-page .learning-notice{padding:18px;border-radius:12px;background:#edf4fd;color:#244d7d;line-height:1.8}
+.course-lessons-preview{background:#f3f7fd;border:1px solid #e0e9f5;border-radius:12px;padding:14px;margin:12px 0;color:#173b69}
+.course-lessons-preview strong{font-size:13px}.course-lessons-preview ol{margin:10px 18px 0;padding:0;line-height:1.8;font-size:13px}.course-lessons-preview small{font-size:12px;color:#607a96}
+@media(max-width:650px){.learning-page .learning-header{padding:15px}.learning-page .learning-main{width:calc(100% - 20px);margin:12px auto;padding:20px}.learning-page .learning-panel,.learning-page .learning-lesson{padding:16px}}
