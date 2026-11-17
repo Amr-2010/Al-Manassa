@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components
 @page "/"
 @rendermode InteractiveServer
 @using AlManassa.Web
@@ -18,7 +19,7 @@
 <div class="section-heading"><div><span class="eyebrow">EXPLORE BY SUBJECT</span><h2>استكشف التخصصات التعليمية</h2></div><p>اختر المجال الذي يناسب أهدافك المهنية</p></div>
 <div class="subject-grid">
 @if(Subjects.Count==0){<p class="course-message">لا توجد أقسام تعليمية مفعّلة حاليًا.</p>}
-@foreach(var subject in Subjects){<button class="subject-tile" @onclick="()=>SelectSubject(subject.Key)"><span class="subject-icon">@subject.Icon</span><strong>@subject.Name</strong><small>@courses.Count(c=>c.Category==subject.Key) كورس منشور</small></button>}
+@foreach(var subject in Subjects){<a class="subject-tile" href="@($"/?category={Uri.EscapeDataString(subject.Key)}#courses")"><span class="subject-icon">@subject.Icon</span><strong>@subject.Name</strong><small>@courses.Count(c=>c.Category==subject.Key) كورس منشور</small></a>}
 </div></section>
 <section class="course-ticker-section" aria-label="شريط الكورسات المتاحة">
   <div class="course-ticker-heading"><strong>الكورسات المتاحة</strong><span>اضغط على أي كورس لفتح صفحته مباشرة</span></div>
@@ -32,7 +33,7 @@
   }else{<p class="course-message">لا توجد كورسات منشورة حاليًا.</p>}
 </section>
 <section class="course-section" id="courses"><div class="section-heading"><div><span class="eyebrow">EXPLORE COURSES</span><h2>@(english ? "Featured courses" : "اكتشف الدورات التعليمية")</h2></div><p>تعلم في أي وقت ومن أي مكان</p></div>
-  <div class="catalog-toolbar"><label>ابحث عن دورة <input type="search" @bind="search" @bind:event="oninput" placeholder="اسم الدورة أو المجال..." /></label><button @onclick="ClearFilters">جميع التخصصات</button>@if(!string.IsNullOrEmpty(categoryFilter)){<span>التخصص: @categoryFilter</span>}</div>
+  <div class="catalog-toolbar"><label>ابحث عن دورة <input type="search" @bind="search" @bind:event="oninput" placeholder="اسم الدورة أو المجال..." /></label><a class="catalog-reset-link" href="/#courses">جميع التخصصات</a>@if(!string.IsNullOrEmpty(categoryFilter)){<span>التخصص: @categoryFilter</span>}</div>
   @if (loading) { <div class="course-message">جاري تحميل الدورات من قاعدة البيانات...</div> }
   else if (error != null) { <div class="course-message">تعذر تحميل الدورات من قاعدة البيانات. تأكد من إعداد DATABASE_URL وتنفيذ ملف SQL. <button @onclick="Load">إعادة المحاولة</button></div> }
   else if (FilteredCourses.Count == 0) { <div class="course-message">@(string.IsNullOrWhiteSpace(categoryFilter) && string.IsNullOrWhiteSpace(search)?"لا توجد كورسات منشورة بعد.":"لا توجد كورسات منشورة مطابقة للبحث أو القسم المحدد.")</div> }
@@ -43,6 +44,7 @@
 </main>
 <footer>© 2026 المنصة | Al-Manassa</footer>
 @code {
+ [SupplyParameterFromQuery(Name="category")] public string? Category {get;set;}
  string search=""; string categoryFilter="";
  List<SubjectItem> Subjects=new();
  List<CourseItem> FilteredCourses => courses.Where(x =>
@@ -56,7 +58,7 @@
  string? error;
  List<CourseItem> courses=new();
  Dictionary<Guid,List<string>> courseLessonTitles=new();
- protected override async Task OnInitializedAsync() => await Load();
+ protected override async Task OnInitializedAsync() {categoryFilter=Category??"";await Load();}
  async Task Load() {loading=true;error=null;try {courses=await Store.PublishedAsync();Subjects=await Store.SubjectsAsync();foreach(var course in courses){try{courseLessonTitles[course.Id]=(await Learning.PublicLessonTitlesAsync(course.Id)).Select(x=>x.Title).ToList();}catch(Exception){courseLessonTitles[course.Id]=new();}}}catch(Exception){error="Database unavailable";}finally{loading=false;}}
  void ToggleLanguage()=>english=!english;
  string CategoryIcon(string c)=>c.ToLowerInvariant() switch {"technology"=>"✦","programming"=>"⌘","business"=>"◈",_=>"◆"};
