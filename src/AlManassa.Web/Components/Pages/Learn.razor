@@ -15,24 +15,24 @@
 <PageTitle>دورتي التعليمية | المنصة</PageTitle>
 <div class="learning-page" dir="rtl">
  <header class="learning-header"><a href="/">المنصة · Al-Manassa</a><nav aria-label="التنقل"><a href="/">الرئيسية</a> · <a href="/#courses">الدورات</a> · <a href="/dashboard">لوحة التحكم</a></nav><span>مساري التعليمي</span></header>
- <main class="learning-main">
- <h1>@(courseTitle ?? "مراحل الدورة التعليمية")</h1>
- @if(!string.IsNullOrWhiteSpace(courseDescription)){<p class="learning-description">@courseDescription</p>}
- <h2>دروس الكورس (@publicLessons.Count)</h2>
+ <main class="learning-main blended-learning"><div class="learning-course-heading"><span class="learning-eyebrow">AL-MANASSA · COURSE PLAYER</span>
+ <h1>@(courseTitle ?? "الكورس التعليمي")</h1>
+ @if(!string.IsNullOrWhiteSpace(courseDescription)){<p class="learning-description">@courseDescription</p>}</div>
+ <div class="learning-course-shell"><aside class="learning-outline"><h2>محتويات الكورس (@publicLessons.Count)</h2>
  @if(publicLessons.Count>0){<div class="public-lesson-list">@foreach(var item in publicLessons.Select((lesson,index)=>(lesson,index))){<div class="public-lesson-row"><span class="public-lesson-number">@(item.index+1)</span><strong>@item.lesson.Title</strong><span class="public-lesson-status">@(enrolled?"متاح بعد فتح الدرس":"سجّل في الكورس لبدء التعلم")</span></div>}</div>}
- else if(courseTitle is not null){<div class="learning-notice">هذا الكورس منشور لكن لا توجد دروس مضافة له في قاعدة البيانات حتى الآن. يجب إضافة الدروس من لوحة الإدارة.</div>}
+ else if(courseTitle is not null){<div class="learning-notice">هذا الكورس منشور لكن لا توجد دروس مضافة له في قاعدة البيانات حتى الآن. يجب إضافة الدروس من لوحة الإدارة.</div>}</aside><div class="learning-course-body">
  @if(courseTitle is null){<div class="learning-notice">تعذر العثور على هذه الدورة أو أنها غير منشورة. <a href="/">العودة إلى الدورات</a></div>}
  
  @if(EnrollmentError==1){<div class="learning-notice" role="alert">تعذر تسجيلك في الكورس. تأكد من اتصال المنصة بقاعدة البيانات ثم حاول مرة أخرى.</div>}
  @if(!string.IsNullOrWhiteSpace(message)){<div class="learning-notice">@message</div>}
  @if(courseTitle is not null && stages.Count>0 && !enrolled){<p>سجّل في الدورة للوصول إلى المحتوى.</p><form method="post" action="@($"/api/courses/{CourseId}/enroll")"><AntiforgeryToken /><button type="submit" class="enroll-submit">التحاق بالدورة</button></form>}
  else if(enrolled && stages.Count>0) {
- <p>الأجزاء المكتملة: @stages.Count(x=>x.Passed) من @stages.Count</p>
+ <div class="learning-progress-summary"><span>تقدمك في الكورس</span><strong>@(publicLessons.Count==0?0:100*publicLessons.Count(x=>lessons.Any(l=>l.Id==x.Id && l.Completed))/publicLessons.Count)%</strong></div>
  <a class="enroll-submit" href="@($"/learn/{CourseId}?stage={stages.FirstOrDefault(x=>!x.Passed)?.Id ?? stages[0].Id}")">استكمال التعلم</a>
  <div class="learning-stages">
  @foreach(var stage in stages){
  <a class="learning-stage @(stage.Passed?"completed":"")" href="@($"/learn/{CourseId}?stage={stage.Id}")">
-  <strong>عرض دروس الكورس @(stages.Count>1?$"· المجموعة {stage.Position}":"")</strong><span>@(stage.Passed?"✓ مكتمل":"فتح الدروس")</span>
+  <strong>متابعة الدروس @(stages.Count>1?$"· الجزء {stage.Position}":"")</strong><span>@(stage.Passed?"✓ مكتمل":"فتح الدروس")</span>
  </a>
  }
  </div>
@@ -83,7 +83,7 @@
  <button class="certificate-print" onclick="window.print()">طباعة / حفظ الشهادة PDF</button>
  </section>}
  }
- </main>
+ </div></div></main>
 </div>
 @code{
  [Parameter] public Guid CourseId{get;set;}
