@@ -19,8 +19,9 @@
  else if(courseTitle is not null){<div class="learning-notice">هذا الكورس منشور لكن لا توجد دروس مضافة له في قاعدة البيانات حتى الآن. يجب إضافة الدروس من لوحة الإدارة.</div>}
  @if(courseTitle is null){<div class="learning-notice">تعذر العثور على هذه الدورة أو أنها غير منشورة. <a href="/">العودة إلى الدورات</a></div>}
  
+ @if(EnrollmentError==1){<div class="learning-notice" role="alert">تعذر تسجيلك في الكورس. تأكد من اتصال المنصة بقاعدة البيانات ثم حاول مرة أخرى.</div>}
  @if(!string.IsNullOrWhiteSpace(message)){<div class="learning-notice">@message</div>}
- @if(courseTitle is not null && stages.Count>0 && !enrolled){<p>سجّل في الدورة للوصول إلى المحتوى.</p><button @onclick="Enroll">التحاق بالدورة</button>}
+ @if(courseTitle is not null && stages.Count>0 && !enrolled){<p>سجّل في الدورة للوصول إلى المحتوى.</p><form method="post" action="@($"/api/courses/{CourseId}/enroll")"><AntiforgeryToken /><button type="submit" class="enroll-submit">التحاق بالدورة</button></form>}
  else if(enrolled && stages.Count>0) {
  <p>الأجزاء المكتملة: @stages.Count(x=>x.Passed) من @stages.Count</p>
  <button @onclick="ResumeLearning">استكمال التعلم</button>
@@ -81,6 +82,7 @@
 </div>
 @code{
  [Parameter] public Guid CourseId{get;set;}
+ [SupplyParameterFromQuery(Name="enrollmentError")] public int? EnrollmentError {get;set;}
  string? courseTitle,courseDescription;
  Guid userId;bool enrolled;Guid? activeStage;string? message;
  List<(Guid Id,string Title)> publicLessons=new();
