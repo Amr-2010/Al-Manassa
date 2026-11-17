@@ -51,6 +51,31 @@ public sealed class LessonMediaStore(IConfiguration config) {
   while(await r.ReadAsync())items.Add((r.GetGuid(0),r.GetString(1),r.GetString(2)));
   return items;
  }
+ public async Task<(int Position,int Watched,int Duration)> WatchProgressAsync(Guid userId,Guid lessonId){
+  await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync();
+  await using(var schema=new NpgsqlCommand("ALTER TABLE student_lesson_progress ADD COLUMN IF NOT EXISTS watched_seconds integer NOT NULL DEFAULT 0; ALTER TABLE student_lesson_progress ADD COLUMN IF NOT EXISTS duration_seconds integer NOT NULL DEFAULT 0",db))await schema.ExecuteNonQueryAsync();
+  await using var cmd=new NpgsqlCommand("SELECT playback_seconds,watched_seconds,duration_seconds FROM student_lesson_progress WHERE user_id=@user AND lesson_id=@lesson",db);
+  cmd.Parameters.AddWithValue("user",userId);cmd.Parameters.AddWithValue("lesson",lessonId);
+  await using var reader=await cmd.ExecuteReaderAsync();
+  return await reader.ReadAsync()?(reader.GetInt32(0),reader.GetInt32(1),reader.GetInt32(2)):(0,0,0);
+ }
+ public async Task SaveWatchProgressAsync(Guid userId,Guid lessonId,int position,int watched,int duration){
+  if(position<0||watched<0||duration<=0||duration>86400||position>duration+2||watched>duration+2)throw new ArgumentOutOfRangeException(nameof(position));
+  await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync();
+  await using(var schema=new NpgsqlCommand("ALTER TABLE student_lesson_progress ADD COLUMN IF NOT EXISTS watched_seconds integer NOT NULL DEFAULT 0; ALTER TABLE student_lesson_progress ADD COLUMN IF NOT EXISTS duration_seconds integer NOT NULL DEFAULT 0",db))await schema.ExecuteNonQueryAsync();
+  await using var cmd=new NpgsqlCommand("""
+   INSERT INTO student_lesson_progress(user_id,lesson_id,playback_seconds,watched_seconds,duration_seconds)
+   SELECT @user,l.id,@position,@watched,@duration FROM stage_lessons l
+   JOIN course_stages s ON s.id=l.stage_id JOIN course_enrollments e ON e.course_id=s.course_id AND e.user_id=@user
+   WHERE l.id=@lesson
+   ON CONFLICT(user_id,lesson_id) DO UPDATE SET
+    playback_seconds=excluded.playback_seconds,
+    watched_seconds=GREATEST(student_lesson_progress.watched_seconds,excluded.watched_seconds),
+    duration_seconds=excluded.duration_seconds,last_position_at=now()
+   """,db);
+  cmd.Parameters.AddWithValue("user",userId);cmd.Parameters.AddWithValue("lesson",lessonId);cmd.Parameters.AddWithValue("position",position);cmd.Parameters.AddWithValue("watched",watched);cmd.Parameters.AddWithValue("duration",duration);
+  await cmd.ExecuteNonQueryAsync();
+ }
  public async Task<int> PositionAsync(Guid userId,Guid lessonId) {
   await using var db=new NpgsqlConnection(ConnectionString);await db.OpenAsync();
   await using var cmd=new NpgsqlCommand("SELECT playback_seconds FROM student_lesson_progress WHERE user_id=@user AND lesson_id=@lesson",db);
